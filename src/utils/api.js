@@ -168,7 +168,50 @@ export const inhaleTokens = async () => {
 
 
 //Update the user profile
-export const updateUserProfile = async (newState, retry=true) => {
+// export const updateUserProfile = async (newState, retry=true) => {
+//   try {
+//     const accessToken = await getAccessToken();
+
+//     if (!accessToken) {
+//       return {
+//         success: false,
+//         error: 'Authentication token not found. Please login again.'
+//       };
+//     }
+
+//     const response = await fetch(`${API_URL}/save-user-info/`, {
+//       method: 'PUT',
+//       headers: {
+//         'Content-Type': 'application/json',
+//         'Authorization': `Bearer ${accessToken}`
+//       },
+//       body: JSON.stringify(newState),
+//     });
+
+//     if (response.status === 401 && retry) {
+//       console.log('Token expired, refreshing...')
+//       await inhaleTokens();
+//       updateUserProfile(newState, false);
+//       return;
+//     }
+
+//     const data = await response.json();
+
+//     if (!response.ok) {
+//       return {
+//         success: false,
+//         error: data.message || data.error || 'Failed to update profile'
+//       };
+//     }
+//     console.log('Profile updated successfully:', data);
+//     return { success: true, data };
+//   } catch (error) {
+//     console.error('Error updating profile:', error);
+//     return { success: false, error: error.message || 'Failed to update profile' };
+//   }
+// };
+
+export const updateUserProfile = async (newState, retry = true) => {
   try {
     const accessToken = await getAccessToken();
 
@@ -179,20 +222,37 @@ export const updateUserProfile = async (newState, retry=true) => {
       };
     }
 
+    const formData = new FormData();
+
+    // Append only if fields exist
+    if (newState.first_name) formData.append('first_name', newState.first_name);
+    if (newState.last_name) formData.append('last_name', newState.last_name);
+    if (newState.email) formData.append('email', newState.email);
+    if (newState.username) formData.append('username', newState.username);
+    if (newState.bio) formData.append('bio', newState.bio);
+    if (newState.level) formData.append('level', newState.level);
+
+    if (newState.profile_pic && typeof newState.profile_pic === 'object') {
+      console.log('The newState.profile_pic is---------------------------------------------------------------------->',newState.profile_pic);
+      formData.append('profile_pic', {
+        uri: newState.profile_pic.uri,
+        name: 'profile.jpg',
+        type: 'image/jpeg',
+      });
+    }
+
     const response = await fetch(`${API_URL}/save-user-info/`, {
       method: 'PUT',
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${accessToken}`
+        'Authorization': `Bearer ${accessToken}`,
+        // Don't set 'Content-Type', let fetch handle it for FormData
       },
-      body: JSON.stringify(newState),
+      body: formData,
     });
 
     if (response.status === 401 && retry) {
-      console.log('Token expired, refreshing...')
       await inhaleTokens();
-      updateUserProfile(newState, false);
-      return;
+      return await updateUserProfile(newState, false);
     }
 
     const data = await response.json();
@@ -203,7 +263,7 @@ export const updateUserProfile = async (newState, retry=true) => {
         error: data.message || data.error || 'Failed to update profile'
       };
     }
-    console.log('Profile updated successfully:', data);
+
     return { success: true, data };
   } catch (error) {
     console.error('Error updating profile:', error);

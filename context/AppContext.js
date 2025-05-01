@@ -47,6 +47,7 @@ export const AppProvider = ({ children }) => {
     setOtpTimer(30);
     setIsResendActive(false);
     setActiveBoxIndex(0);
+
   };
 
   const logout = async () => {
@@ -59,6 +60,8 @@ export const AppProvider = ({ children }) => {
       setEmail('');
       setPassword('');
       setCurrentScreen('email');
+      userDispatch({ type: 'RESET_USER' });
+
       
       return true;
     } catch (error) {
@@ -152,27 +155,23 @@ export const AppProvider = ({ children }) => {
     setIsAuthLoading(true);
     try {
       const result = await verifyOTP(email, otp);
-
-      // Log the full response for debugging
       console.log("API Response:", result);
-      
+    
       if (result.success) {
         setIsOtpVerified(true);
         
-        // Set authenticated to true when OTP is verified
-        setAuthenticated(true);
-        
-        // Check if user is new based on API response
+        // Only set authenticated if not a new user
         let isNewUserValue = false;
         if (result.data && result.data.isNewUser !== undefined) {
-          // Set isNewUser state based on API response
           isNewUserValue = result.data.isNewUser;
           setIsNewUser(isNewUserValue);
-          console.log("Setting isNewUser to:", isNewUserValue);
+          // Only set authenticated if NOT a new user
+          if (!isNewUserValue) {
+            setAuthenticated(true);
+          }
         }
         
-        // Return success and the isNewUser value directly
-        return { success: true, isNewUser: isNewUserValue };
+        return { success: true, isNewUser: result?.data?.isNewUser};
       } else {
         Alert.alert('Error', result.error || 'Invalid verification code. Please try again.');
         return { success: false };
@@ -195,6 +194,7 @@ export const AppProvider = ({ children }) => {
       
       if (result.success) {
         setPassword(passwordValue);
+        setAuthenticated(true);
         setIsAuthLoading(false);
         return true;
       } else {

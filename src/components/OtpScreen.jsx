@@ -127,7 +127,7 @@ const OtpScreen = ({ onVerificationComplete, onGoBack }) => {
       const result = await verifyUserOtp();
       
       if (result.success) {
-        console.log("OtpScreen received isNewUser value:", result.isNewUser);
+
         
         // Always call onVerificationComplete after successful verification
         // Pass the isNewUser value directly to ensure we have latest value

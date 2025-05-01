@@ -1,34 +1,43 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TextInput, 
-  TouchableOpacity, 
-  Image, 
-  Modal, 
-  Animated, 
-  Dimensions, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  Image,
+  Modal,
+  Animated,
+  Dimensions,
   TouchableWithoutFeedback,
   ScrollView,
   KeyboardAvoidingView,
+  PermissionsAndroid,
   Platform
 } from 'react-native';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { useAppContext } from '../../context/AppContext';
 import { updateUserProfile } from '../utils/api';
+import { API_URL } from '../utils/config';
+import { launchImageLibrary } from 'react-native-image-picker';
+
+
+
+
+
+
 
 const { height } = Dimensions.get('window');
 
 const ProfileEditModal = ({ visible, onClose }) => {
 
-  const {userState,userDispatch} = useAppContext();
+  const { userState, userDispatch } = useAppContext();
 
 
 
   // Animation value for sliding up
   const [slideAnim] = useState(new Animated.Value(height));
-  
+
   // Level selector state
   const [showLevelSelector, setShowLevelSelector] = useState(false);
   const levelOptions = ['1st Year', '2nd Year', '3rd Year', '4th Year', 'Graduate'];
@@ -56,10 +65,47 @@ const ProfileEditModal = ({ visible, onClose }) => {
     onClose();
   };
 
-  const handleImageChange = () => {
-    // Image picker functionality would be implemented here
-    console.log('Change profile image');
+
+  const requestGalleryPermission = async () => {
+    if (Platform.OS === 'android') {
+      const granted = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES ||
+        PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
+        {
+          title: 'Gallery Permission',
+          message: 'App needs access to your gallery to pick images',
+          buttonNeutral: 'Ask Me Later',
+          buttonNegative: 'Cancel',
+          buttonPositive: 'OK',
+        }
+      );
+      return granted === PermissionsAndroid.RESULTS.GRANTED;
+    }
+    // iOS handles permissions automatically
+    return true;
   };
+
+
+  const pickImage = async () => {
+    const hasPermission = await requestGalleryPermission();
+    if (!hasPermission) {
+      Alert.alert('Permission denied', 'Cannot access gallery without permission');
+      return;
+    }
+
+    launchImageLibrary({ mediaType: 'photo' }, (response) => {
+      if (response.didCancel) {
+        console.log('User cancelled image picker');
+      } else if (response.errorCode) {
+        console.log('ImagePicker Error: ', response.errorMessage);
+      } else {
+        const asset = response.assets?.[0];
+        console.log('Selected Image URI:', asset.type);
+        userDispatch({ type: 'UPDATE_USER', payload: { profile_pic: asset } });
+      }
+    });
+  };
+
 
   return (
     <Modal
@@ -71,7 +117,7 @@ const ProfileEditModal = ({ visible, onClose }) => {
       <TouchableWithoutFeedback onPress={onClose}>
         <View style={styles.overlay}>
           <TouchableWithoutFeedback>
-            <Animated.View 
+            <Animated.View
               style={[
                 styles.modalContainer,
                 { transform: [{ translateY: slideAnim }] }
@@ -82,10 +128,10 @@ const ProfileEditModal = ({ visible, onClose }) => {
                 style={styles.keyboardAvoid}
               >
                 <View style={styles.handle} />
-                
+
                 <View style={styles.header}>
-                  <Text style={styles.headerTitle}>Edit Profile</Text>
-                  <TouchableOpacity 
+                  <Text style={styles.headerTitle}>Setup Profile</Text>
+                  <TouchableOpacity
                     style={styles.closeButton}
                     onPress={onClose}
                   >
@@ -93,20 +139,24 @@ const ProfileEditModal = ({ visible, onClose }) => {
                   </TouchableOpacity>
                 </View>
 
-                <ScrollView 
+                <ScrollView
                   contentContainerStyle={styles.scrollContent}
                   showsVerticalScrollIndicator={false}
                 >
                   {/* Profile Image Section */}
                   <View style={styles.imageSection}>
                     <View style={styles.imageContainer}>
-                      <Image 
-                         source={require('../assets/profile.webp')}
+                      <Image
+                        source={{
+                          uri: userState.profile_pic?.uri?.startsWith('file')
+                            ? userState.profile_pic.uri
+                            : `${API_URL}${userState.profile_pic}`,
+                        }}
                         style={styles.profileImage}
                       />
-                      <TouchableOpacity 
+                      <TouchableOpacity
                         style={styles.imageEditButton}
-                        onPress={handleImageChange}
+                        onPress={() => pickImage()}
                       >
                         <Feather name="camera" size={18} color="#fff" />
                       </TouchableOpacity>
@@ -145,7 +195,7 @@ const ProfileEditModal = ({ visible, onClose }) => {
 
                     <View style={styles.inputGroup}>
                       <Text style={styles.inputLabel}>Level</Text>
-                      <TouchableOpacity 
+                      <TouchableOpacity
                         style={styles.levelSelector}
                         onPress={() => setShowLevelSelector(!showLevelSelector)}
                       >
@@ -169,7 +219,7 @@ const ProfileEditModal = ({ visible, onClose }) => {
                                 setShowLevelSelector(false);
                               }}
                             >
-                              <Text 
+                              <Text
                                 style={[
                                   styles.levelOptionText,
                                   userState.level === level && styles.selectedLevelOptionText
@@ -203,7 +253,7 @@ const ProfileEditModal = ({ visible, onClose }) => {
                   </View>
 
                   {/* Save Button */}
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={styles.saveButton}
                     onPress={handleSave}
                   >

@@ -8,9 +8,18 @@ import { API_URL } from '../utils/config';
 
 const Profile = ({ navigation }) => {
   const { userState, userDispatch } = useAppContext();
-  console.log('userState', userState);
+  console.log('userState', userState.last_name , userState.first_name);
   const [editModalVisible, setEditModalVisible] = useState(false);
 
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      if (userState.first_name === '' && userState.last_name === '') {
+        setEditModalVisible(true);
+      }
+    });
+
+    return unsubscribe;
+  }, [navigation, userState.first_name, userState.last_name]);
 
   useEffect(() => {
 
@@ -24,10 +33,10 @@ const Profile = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle='dark-content' backgroundColor={editModalVisible ? 'rgba(28, 24, 53, 0.7)' : '#eedd70'} />
+      <StatusBar barStyle='dark-content' backgroundColor={editModalVisible ? 'rgba(28, 24, 53, 0.9)' : '#eedd70'} />
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
           <Feather name="arrow-left" size={24} color="#1c1835" />
         </TouchableOpacity>
         <TouchableOpacity>
@@ -39,7 +48,12 @@ const Profile = ({ navigation }) => {
       <View style={styles.profileSection}>
         <View style={styles.profileImageContainer}>
           <Image
-            source={{ uri:`${API_URL}${userState.profile_pic}` }} 
+            source={{
+              uri: userState.profile_pic?.uri?.startsWith('file')
+                ? userState.profile_pic.uri
+                : `${API_URL}${userState.profile_pic}`,
+            }}
+            // source={{ uri:`${API_URL}${userState.profile_pic}` }} 
             // source={require('../assets/profile.webp')}
             style={styles.profileImage}
             resizeMode="cover"

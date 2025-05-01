@@ -16,7 +16,8 @@ const SignIn = ({navigation}) => {
     emailFocused,
     setEmailFocused,
     setStatusbarTheme,
-    isNewUser
+    isNewUser,
+    setAuthenticated
   } = useAppContext()
   
   // References to screens for smoother transitions
@@ -71,20 +72,15 @@ const SignIn = ({navigation}) => {
     
   }, [animateTransition])
 
-  const handleVerificationComplete = useCallback((directIsNewUser) => {
-    // Use the parameter directIsNewUser if provided, otherwise fallback to context value
-    const userIsNew = directIsNewUser !== undefined ? directIsNewUser : isNewUser;
-    
-    // Add a debug log to check the value of isNewUser
-    console.log("handleVerificationComplete called with parameter:", directIsNewUser);
-    console.log("Context isNewUser:", isNewUser);
-    console.log("Using userIsNew value:", userIsNew);
-    
+  const handleVerificationComplete = useCallback((isNewUser) => {
+    console.log('talking from the signin screen and handling the verification complete--------------------------------------------------------------------->',isNewUser);
     // If user is new, show password screen, otherwise navigate to Home
-    if (userIsNew) {
+    if (isNewUser) {
+      console.log('here in the password screen')
       animateTransition('password');
     } else {
-      navigation.navigate('MainTabs');
+      console.log('here in the mainttabs')
+      // navigation.navigate('MainTabs');
     }
   }, [animateTransition, isNewUser, navigation])
 
@@ -94,12 +90,12 @@ const SignIn = ({navigation}) => {
   }, [animateTransition, setEmailFocused])
 
   const handleSkip = useCallback(() => {
-    navigation.navigate('MainTabs')
-  }, [navigation])
+    setAuthenticated(true);
+  }, [setAuthenticated])
 
   const handlePasswordSaved = useCallback(() => {
-    navigation.navigate('MainTabs')
-  }, [navigation])
+    setAuthenticated(true);
+  }, [setAuthenticated])
 
   // Render all screens at all times, but control their visibility
   // This prevents the flickering during transitions
