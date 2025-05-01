@@ -68,6 +68,7 @@ const SignIn = ({navigation}) => {
     // Using context's changeToOtpScreen method would be simpler,
     // but we need the animation logic, so we'll handle it here
     animateTransition('otp')
+    
   }, [animateTransition])
 
   const handleVerificationComplete = useCallback((directIsNewUser) => {
@@ -83,7 +84,7 @@ const SignIn = ({navigation}) => {
     if (userIsNew) {
       animateTransition('password');
     } else {
-      navigation.navigate('Home');
+      navigation.navigate('MainTabs');
     }
   }, [animateTransition, isNewUser, navigation])
 
@@ -93,11 +94,11 @@ const SignIn = ({navigation}) => {
   }, [animateTransition, setEmailFocused])
 
   const handleSkip = useCallback(() => {
-    navigation.navigate('Home')
+    navigation.navigate('MainTabs')
   }, [navigation])
 
   const handlePasswordSaved = useCallback(() => {
-    navigation.navigate('Home')
+    navigation.navigate('MainTabs')
   }, [navigation])
 
   // Render all screens at all times, but control their visibility

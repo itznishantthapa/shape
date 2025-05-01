@@ -1,11 +1,11 @@
 // API endpoints for authentication
 import { API_URL } from './config';
-import { storeAuthTokens, storeUserEmail, getAccessToken } from './secureStorage';
+import { storeAuthTokens, storeUserEmail, getAccessToken, getRefreshToken } from './secureStorage';
 
 // Function to send OTP to email
 export const sendOTP = async (email) => {
   try {
-    const response = await fetch(`${API_URL}/api/auth/send-otp/`, {
+    const response = await fetch(`${API_URL}/send-otp/`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -14,14 +14,14 @@ export const sendOTP = async (email) => {
     });
 
     const data = await response.json();
-    
+
     if (!response.ok) {
-      return { 
-        success: false, 
+      return {
+        success: false,
         error: data.message || data.error || 'Failed to send OTP'
       };
     }
-    
+
     return { success: true, data };
   } catch (error) {
     console.error('Error sending OTP:', error);
@@ -32,7 +32,7 @@ export const sendOTP = async (email) => {
 // Function to verify OTP
 export const verifyOTP = async (email, otp) => {
   try {
-    const response = await fetch(`${API_URL}/api/auth/verify-otp/`, {
+    const response = await fetch(`${API_URL}/verify-otp/`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -41,14 +41,14 @@ export const verifyOTP = async (email, otp) => {
     });
 
     const data = await response.json();
-    
+
     if (!response.ok) {
-      return { 
-        success: false, 
+      return {
+        success: false,
         error: data.message || data.error || 'Failed to verify OTP'
       };
     }
-    
+
     // If successful, store the tokens and user email
     if (data.tokens) {
       await Promise.all([
@@ -56,7 +56,7 @@ export const verifyOTP = async (email, otp) => {
         storeUserEmail(email)
       ]);
     }
-    
+
     return { success: true, data };
   } catch (error) {
     console.error('Error verifying OTP:', error);
@@ -69,15 +69,15 @@ export const setPassword = async (email, password) => {
   try {
     // Get the stored access token
     const accessToken = await getAccessToken();
-    
+
     if (!accessToken) {
-      return { 
-        success: false, 
+      return {
+        success: false,
         error: 'Authentication token not found. Please verify your email again.'
       };
     }
-    
-    const response = await fetch(`${API_URL}/api/auth/set-password/`, {
+
+    const response = await fetch(`${API_URL}/set-password/`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -87,14 +87,14 @@ export const setPassword = async (email, password) => {
     });
 
     const data = await response.json();
-    
+
     if (!response.ok) {
-      return { 
-        success: false, 
+      return {
+        success: false,
         error: data.message || data.error || 'Failed to set password'
       };
     }
-    
+
     return { success: true, data };
   } catch (error) {
     console.error('Error setting password:', error);
@@ -105,7 +105,7 @@ export const setPassword = async (email, password) => {
 // Function to login with email and password
 export const loginWithPassword = async (email, password) => {
   try {
-    const response = await fetch(`${API_URL}/api/auth/login/`, {
+    const response = await fetch(`${API_URL}/login/`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -114,14 +114,14 @@ export const loginWithPassword = async (email, password) => {
     });
 
     const data = await response.json();
-    
+
     if (!response.ok) {
-      return { 
-        success: false, 
+      return {
+        success: false,
         error: data.message || data.error || 'Failed to login'
       };
     }
-    
+
     // If successful, store the tokens and user email
     if (data.tokens) {
       await Promise.all([
@@ -129,10 +129,118 @@ export const loginWithPassword = async (email, password) => {
         storeUserEmail(email)
       ]);
     }
-    
+
     return { success: true, data };
   } catch (error) {
     console.error('Error logging in:', error);
     return { success: false, error: error.message || 'Failed to login' };
   }
-}; 
+};
+
+//If the token is expired, Get New Token
+export const inhaleTokens = async () => {
+  const refreshToken = await getRefreshToken();
+  if (!refreshToken) {
+    console.error('No refresh token found');
+    return;
+  }
+
+  console.log('Refresh token found, attempting to get access token from backend, api.js');
+  const response = await fetch(`${API_URL}/get-tokens/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ refresh: refreshToken }),
+  });
+  console.log('here1')
+  const data = await response.json();
+  console.log('here2')
+  console.log('Refresh response:', data);
+
+  if (data.success) {
+    console.log('Here3')
+    await storeAuthTokens(data.tokens);
+
+    console.log('here4')
+    console.log('New access token stored');
+  }
+
+}
+
+
+//Update the user profile
+export const updateUserProfile = async (newState, retry=true) => {
+  try {
+    const accessToken = await getAccessToken();
+
+    if (!accessToken) {
+      return {
+        success: false,
+        error: 'Authentication token not found. Please login again.'
+      };
+    }
+
+    const response = await fetch(`${API_URL}/save-user-info/`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`
+      },
+      body: JSON.stringify(newState),
+    });
+
+    if (response.status === 401 && retry) {
+      console.log('Token expired, refreshing...')
+      await inhaleTokens();
+      updateUserProfile(newState, false);
+      return;
+    }
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      return {
+        success: false,
+        error: data.message || data.error || 'Failed to update profile'
+      };
+    }
+    console.log('Profile updated successfully:', data);
+    return { success: true, data };
+  } catch (error) {
+    console.error('Error updating profile:', error);
+    return { success: false, error: error.message || 'Failed to update profile' };
+  }
+};
+
+//Get the user profile
+export const getUserProfile = async (userDispatch,retry=true) => {
+  const accessToken = await getAccessToken();
+  try {
+    const response = await fetch( `${API_URL}/get-me/`, {
+      method: 'GET', 
+      headers: {
+        'Content-Type': 'application/json',
+       'Authorization': `Bearer ${accessToken}`
+      },
+    });
+
+
+  if (response.status === 401 && retry) {
+    console.log('Token expired, refreshing...')
+    await inhaleTokens(); 
+    getUserProfile(userDispatch,false);
+    return; 
+  }
+
+
+    const data = await response.json();
+    console.log('User data:', data);
+    if (response.ok) {
+      userDispatch({ type: 'SET_USER', payload: data.user });
+    } else {
+      console.error('Error saving user info:', data);
+    }
+  }
+  catch (error) {
+    console.error('Error saving user info:', error);
+  }
+}

@@ -1,8 +1,9 @@
 // AppContext.js
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useReducer, useState } from 'react';
 import { sendOTP, verifyOTP, setPassword as apiSetPassword } from '../src/utils/api';
 import { Alert } from 'react-native';
 import { clearAuthData } from '../src/utils/secureStorage';
+import { userReducer,userInitialState } from './userReducer';
 
 // 1. Create context
 const AppContext = createContext();
@@ -18,6 +19,8 @@ export const useAppContext = () => {
 export const AppProvider = ({ children }) => {
   // UI theme states
   const [statusBarTheme, setStatusbarTheme] = useState('black');
+  const [userState, userDispatch] = useReducer(userReducer, userInitialState);
+
   
   // Authentication states
   const [email, setEmail] = useState('');
@@ -264,7 +267,11 @@ export const AppProvider = ({ children }) => {
         resendOtp,
         verifyUserOtp,
         savePassword,
-        logout
+        logout,
+
+        //user state
+        userState,
+        userDispatch,
       }}>
       {children}
     </AppContext.Provider>

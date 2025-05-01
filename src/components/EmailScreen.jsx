@@ -12,7 +12,8 @@ const EmailScreen = ({ handleContinue, navigation }) => {
     emailFocused,
     isAuthLoading,
     setIsAuthLoading,
-    changeToOtpScreen
+    changeToOtpScreen,
+    setAuthenticated,
   } = useAppContext()
   
   const [loading, setLoading] = useState(false)
@@ -82,7 +83,8 @@ const EmailScreen = ({ handleContinue, navigation }) => {
         
         if (result.success) {
           // Navigate directly to home screen
-          navigation.navigate('Home');
+          // navigation.navigate('MainTabs');
+          setAuthenticated(true);
         } else {
           Alert.alert("Login Failed", result.error || "Invalid email or password");
         }

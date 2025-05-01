@@ -8,18 +8,7 @@ const Home = ({ navigation }) => {
   
   const handleLogout = async () => {
     try {
-      // Use the logout function from context
-      const success = await logout();
-      
-      if (success) {
-        // Navigation will be handled automatically by App.jsx
-        // due to the authenticated state change
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'SignIn' }],
-        });
-        console.log('Successfully logged out');
-      }
+        await logout();
     } catch (error) {
       console.error('Error logging out:', error);
     }
@@ -106,25 +95,21 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   card: {
-    backgroundColor: '#f8f8f8',
+    backgroundColor: '#1c1835',
     padding: 24,
     borderRadius: 16,
     width: '100%',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 2,
+
   },
   cardTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#0F172A',
+    color: '#ffffff',
     marginBottom: 8,
   },
   cardText: {
     fontSize: 14,
-    color: '#334155',
+    color: '#ffffff',
     lineHeight: 22,
   }
 })

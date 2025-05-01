@@ -1,7 +1,7 @@
 // Configuration file for environment variables
 
 // API configuration
-const DEV_API_URL = 'http://192.168.1.68:8000'; // Tested and valid API endpoint
+const DEV_API_URL = 'http://192.168.1.72:8000'; // Tested and valid API endpoint
 const PROD_API_URL = 'https://your-production-api-url.com';
 
 // Current environment
