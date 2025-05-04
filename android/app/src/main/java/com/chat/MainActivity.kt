@@ -1,4 +1,4 @@
-package com.chat
+package com.blackonedevs.shapechat
 
 import android.os.Build
 import android.os.Bundle

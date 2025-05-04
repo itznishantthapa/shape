@@ -1,6 +1,8 @@
 // API endpoints for authentication
+import { setCache } from './cache';
 import { API_URL } from './config';
 import { storeAuthTokens, storeUserEmail, getAccessToken, getRefreshToken } from './secureStorage';
+import { getCache } from './cache';
 
 // Function to send OTP to email
 export const sendOTP = async (email) => {
@@ -167,49 +169,6 @@ export const inhaleTokens = async () => {
 }
 
 
-//Update the user profile
-// export const updateUserProfile = async (newState, retry=true) => {
-//   try {
-//     const accessToken = await getAccessToken();
-
-//     if (!accessToken) {
-//       return {
-//         success: false,
-//         error: 'Authentication token not found. Please login again.'
-//       };
-//     }
-
-//     const response = await fetch(`${API_URL}/save-user-info/`, {
-//       method: 'PUT',
-//       headers: {
-//         'Content-Type': 'application/json',
-//         'Authorization': `Bearer ${accessToken}`
-//       },
-//       body: JSON.stringify(newState),
-//     });
-
-//     if (response.status === 401 && retry) {
-//       console.log('Token expired, refreshing...')
-//       await inhaleTokens();
-//       updateUserProfile(newState, false);
-//       return;
-//     }
-
-//     const data = await response.json();
-
-//     if (!response.ok) {
-//       return {
-//         success: false,
-//         error: data.message || data.error || 'Failed to update profile'
-//       };
-//     }
-//     console.log('Profile updated successfully:', data);
-//     return { success: true, data };
-//   } catch (error) {
-//     console.error('Error updating profile:', error);
-//     return { success: false, error: error.message || 'Failed to update profile' };
-//   }
-// };
 
 export const updateUserProfile = async (newState, retry = true) => {
   try {
@@ -293,8 +252,8 @@ export const getUserProfile = async (userDispatch,retry=true) => {
 
 
     const data = await response.json();
-    console.log('User data:', data);
     if (response.ok) {
+      setCache('user', data.user);
       userDispatch({ type: 'SET_USER', payload: data.user });
     } else {
       console.error('Error saving user info:', data);
@@ -302,5 +261,69 @@ export const getUserProfile = async (userDispatch,retry=true) => {
   }
   catch (error) {
     console.error('Error saving user info:', error);
+  }
+}
+
+// http://192.168.137.92:8000/get-private-chat/
+// target_user=1
+export const getPrivateChats = async (target_user,roomName,retry=true) => {
+  try {
+    const accessToken = await getAccessToken();
+    const response = await fetch(`${API_URL}/get-private-chat/?target_user=${encodeURIComponent(target_user)}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`
+      },
+    });
+
+
+    if (response.status === 401 && retry) {
+      console.log('Token expired, refreshing...')
+      await inhaleTokens(); 
+      getPrivateChats(target_user,roomName,false);
+      return; 
+    }
+
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.message || 'Failed to fetch messages');
+    }
+    setCache(`private_chats_${roomName}`, data.messages)
+    return data;
+  } catch (error) {
+    console.error('Error fetching private chats:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+export const getUnreadMessages = async (retry=true) => {
+  try {
+    const accessToken = await getAccessToken();
+    const response = await fetch(`${API_URL}/get-all-unread-messages/`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`
+      },
+    });
+
+    if (response.status === 401 && retry) {
+      console.log('Token expired, refreshing...')
+      await inhaleTokens(); 
+      getUnreadMessages(false);
+      return; 
+    }
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.message || 'Failed to fetch messages');
+    }
+
+
+
+    return data;
+  } catch (error) {
+  
+    return { success: false, error: error.message };
   }
 }

@@ -1,4 +1,4 @@
-package com.chat
+package com.blackonedevs.shapechat
 
 import android.app.Application
 import android.content.res.Configuration

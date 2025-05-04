@@ -5,8 +5,11 @@ import { useAppContext } from '../../context/AppContext'
 import { getAccessToken } from '../utils/secureStorage'
 import { Ionicons, Feather } from '@expo/vector-icons'
 import { API_URL } from '../utils/config'
-import { inhaleTokens } from '../utils/api'
+import { getPrivateChats, getUnreadMessages, inhaleTokens } from '../utils/api'
 import { StatusBar } from 'expo-status-bar'
+import { forEach, gt } from 'lodash'
+import { getAllStoredKeys, getCache, setCache } from '../utils/cache'
+import { checkNetStatus } from '../utils/netStatus'
 
 const Chat = ({ navigation }) => {
   const [allUsers, setAllUsers] = useState([])
@@ -15,24 +18,32 @@ const Chat = ({ navigation }) => {
   const [error, setError] = useState(null)
   const [currentUser, setCurrentUser] = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [lastMessages, setLastMessages] = useState({})
 
   useEffect(() => {
     // First fetch current user, then fetch all users
     const initializeData = async () => {
       try {
-        await fetchCurrentUser()
+        setLoading(true);
+        const user = await getCache('user')
+        if(user){
+          setCurrentUser(user)
+          console.log('Found cached current user:', user.email);
+        }
+        
         await fetchUsers()
+        // await fetchUnreadMessages()
       } catch (error) {
         console.error('Error initializing data:', error)
         setError('Failed to load chat data')
       } finally {
         setLoading(false)
+        await fetchUnreadMessages()
       }
     }
 
     initializeData()
   }, [])
-  console.log('filteredUsers-->',filteredUsers)
 
   // When current user or all users change, filter the user list
   useEffect(() => {
@@ -65,38 +76,54 @@ const Chat = ({ navigation }) => {
     }
   }, [searchQuery, currentUser, allUsers])
 
-  const fetchCurrentUser = async (retry=true) => {
-    try {
-      const token = await getAccessToken()
-      const response = await fetch(`${API_URL}/get-me/`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
+  // const fetchCurrentUser = async (retry=true) => {
+  //   try {
+  //     const token = await getAccessToken()
+  //     const response = await fetch(`${API_URL}/get-me/`, {
+  //       headers: {
+  //         'Authorization': `Bearer ${token}`
+  //       }
+  //     })
 
-      if (response.status === 401 && retry) {
-        console.log('Token expired, refreshing...')
-        await inhaleTokens(); 
-        fetchCurrentUser(false);
-        fetchUsers(false);
-        return; 
-      }
+  //     if (response.status === 401 && retry) {
+  //       console.log('Token expired, refreshing...')
+  //       await inhaleTokens(); 
+  //       fetchCurrentUser(false);
+  //       fetchUsers(false);
+  //       return; 
+  //     }
 
-      const data = await response.json()
-      if (data.success) {
-        setCurrentUser(data.user)
-        console.log('Current user fetched:', data.user.email)
-      } else {
-        console.error('Failed to fetch current user:', data)
-      }
-    } catch (error) {
-      console.error('Error fetching current user:', error)
-      throw error
-    }
-  }
+  //     const data = await response.json()
+  //     if (data.success) {
+  //       setCurrentUser(data.user)
+  //       console.log('Current user fetched:', data.user.email)
+  //     } else {
+  //       console.error('Failed to fetch current user:', data)
+  //     }
+  //   } catch (error) {
+  //     console.error('Error fetching current user:', error)
+  //     throw error
+  //   }
+  // }
 
   const fetchUsers = async (retry = true) => {
+    const netStatus = await checkNetStatus()
+    if(!netStatus) return
+
     try {
+      // Check cache first
+      const cachedUsers = await getCache('all_users');
+      
+      if (cachedUsers) {
+        console.log('Using cached users data:', cachedUsers.length);
+        setAllUsers(cachedUsers);
+        // Add this to force the filteredUsers update
+        setFilteredUsers(cachedUsers.filter(user => user.id !== currentUser?.id));
+        
+        return;
+      }
+
+      // If no cache, fetch from API
       const token = await getAccessToken()
       const response = await fetch(`${API_URL}/get-all-users/`, {
         headers: {
@@ -106,31 +133,108 @@ const Chat = ({ navigation }) => {
 
       const data = await response.json()
       if (data.success) {
+        console.log('API fetched users:', data.users.length);
         setAllUsers(data.users)
-        console.log('All users fetched:', data.users.length)
+        // Add this to force the filteredUsers update
+        setFilteredUsers(data.users.filter(user => user.id !== currentUser?.id));
+        // Cache the users data
+        await setCache('all_users', data.users)
+        console.log('All users fetched and cached:', data.users.length)
       } else {
         console.error('Failed to fetch users:', data)
         setError('Failed to fetch users')
       }
-    } catch {
-      console.error('Error fetching users:')
+    } catch (error) {
+      console.error('Error fetching users:', error)
       setError('Failed to fetch users')
       throw error
     }
   }
 
-  const handleUserPress = (user) => {
-    if (!currentUser) return
+
+  const fetchUnreadMessages = async () => { 
+    // // Check if we have internet connection
+    // const isOnline = navigator.onLine;
+    // if (!isOnline) {
+    //   console.log('No internet connection, skipping unread messages fetch');
+    //   return;
+    // }
+
+    const netStatus = await checkNetStatus()
+    if(!netStatus) return
+
+    try {
+      const unreadData = await getUnreadMessages()
+ 
+      if (unreadData.success) {
+        console.log('unreadData-->', unreadData)
+        const unreadMessages = unreadData.unread_messages
+        
+        unreadMessages.forEach(async (message) => {
+          const roomName = message.room_name
+          const cachedMessages = await getCache(`private_chats_${roomName}`)
+          console.log('cachedMessages-->',cachedMessages)
+          if (cachedMessages) {
+            // Create a Set of existing message IDs
+            const ids = new Set(cachedMessages.map(msg => msg.id))
+            
+            // Only add the new message if its ID isn't in the cached messages
+            const merged = ids.has(message.id) 
+              ? cachedMessages 
+              : [...cachedMessages, message]
+            
+            await setCache(`private_chats_${roomName}`, merged)
+            console.log('cache updated and appended with roomName-->', roomName)
+          } else {
+            // If no cache exists, create new cache with just this message
+            await setCache(`private_chats_${roomName}`, [message])
+            console.log('new cache created for roomName-->', roomName)
+          }
+        })
+      }else{
+        console.log('No unread messages found')
+      }
+      
+    } catch (error) {
+      console.error('Error fetching unread messages:', error);
+    }
+  }
+
+  const handleUserPress = async (user) => {
+    if (!currentUser) return;
     
     // Generate room name based on user IDs
-    const roomName = `chat_${Math.min(currentUser.id, user.id)}_${Math.max(currentUser.id, user.id)}`
-    
-    navigation.navigate('Inbox', {
-      user,
-      roomName,
-      currentUser
-    })
-  }
+    const roomName = `chat_${Math.min(currentUser.id, user.id)}_${Math.max(currentUser.id, user.id)}`;
+
+    try {
+      // Check cache first
+      const cachedMessages = await getCache(`private_chats_${roomName}`);
+      
+      if (cachedMessages) {
+        console.log(`we have found cached messages for this ${roomName}, so we are not calling the api`)
+        // If we have cached messages, use them directly
+        navigation.navigate('Inbox', {
+          user,
+          roomName,
+          currentUser,
+          privateChats: cachedMessages
+        });
+      } else {
+        // If no cache exists, fetch from API
+        const privateChats = await getPrivateChats(user.id, roomName);
+        if (privateChats.success) {
+          navigation.navigate('Inbox', {
+            user,
+            roomName,
+            currentUser,
+            privateChats: privateChats.messages
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error navigating to inbox:', error);
+    }
+  };
 
   const getInitials = (user) => {
     if (user.first_name && user.last_name) {
@@ -148,26 +252,31 @@ const Chat = ({ navigation }) => {
     return statuses[Math.floor(Math.random() * statuses.length)];
   }
 
-  const renderUserItem = ({ item, index }) => {
-    // Generate a consistent but random color based on user id
+  // Add this function to fetch last messages for all users
+  const fetchLastMessages = async () => {
+    const messages = {};
+    for (const user of filteredUsers) {
+      const roomName = `chat_${Math.min(currentUser.id, user.id)}_${Math.max(currentUser.id, user.id)}`;
+      const cachedMessages = await getCache(`private_chats_${roomName}`);
+      if (cachedMessages && cachedMessages.length > 0) {
+        messages[user.id] = cachedMessages[0].message;
+      }
+    }
+    setLastMessages(messages);
+  };
+
+  // Add this effect to fetch last messages when users are loaded
+  useEffect(() => {
+    if (filteredUsers.length > 0 && currentUser) {
+      fetchLastMessages();
+    }
+  }, [filteredUsers, currentUser]);
+
+  const renderUserItem = ({ item }) => {
+    // Generate avatar color based on user id
     const colorIndex = item.id % 4;
     const colors = ['#643bc5', '#9bcfab', '#eedd70', '#ff7eb6'];
     const avatarColor = colors[colorIndex];
-    
-    // Random last message for demo purposes
-    const messages = [
-      "Hey, how's it going?",
-      "Did you finish the assignment?",
-      "Let's meet up later!",
-      "Check out this cool project",
-      "Are you coming to the event?",
-      "Thanks for your help!",
-      "Can we talk about the project?",
-      "Did you see the latest lecture?"
-    ];
-    
-    const randomMessage = messages[item.id % messages.length];
-    const status = getRandomStatus();
     
     return (
       <TouchableOpacity
@@ -175,46 +284,35 @@ const Chat = ({ navigation }) => {
         onPress={() => handleUserPress(item)}
         activeOpacity={0.7}
       >
-        {item.profile_pic ? (
-          <Image 
-            source={{ uri: `${API_URL}/media/${item.profile_pic}` }} 
-            style={styles.avatar}
-            defaultSource={require('../assets/profile.webp')}
-          />
-        ) : (
-          <View style={[styles.avatarContainer, { backgroundColor: avatarColor }]}>
-            <Text style={styles.avatarText}>{getInitials(item)}</Text>
-          </View>
-        )}
+        <View style={styles.avatarWrapper}>
+          {item.profile_pic ? (
+            <Image 
+              source={{ uri: `${API_URL}/media/${item.profile_pic}` }} 
+              style={styles.avatar}
+              defaultSource={require('../assets/profile.webp')}
+            />
+          ) : (
+            <View style={[styles.avatarContainer, { backgroundColor: avatarColor }]}>
+              <Text style={styles.avatarText}>{getInitials(item)}</Text>
+            </View>
+          )}
+          <View style={[styles.onlineIndicator, { backgroundColor: '#4CAF50' }]} />
+        </View>
         
         <View style={styles.userInfo}>
-          <View style={styles.nameRow}>
+          <View style={styles.nameContainer}>
             <Text style={styles.userName}>
               {item.first_name && item.last_name 
                 ? `${item.first_name} ${item.last_name}` 
                 : item.username}
             </Text>
-            <Text style={styles.timeStamp}>2:34 PM</Text>
-          </View>
-          
-          <View style={styles.messageRow}>
-            <Text style={styles.lastMessage} numberOfLines={1}>
-              {randomMessage}
-            </Text>
-            
-            <View style={styles.badgeContainer}>
-              <Text style={styles.badgeText}>{Math.floor(Math.random() * 5) + 1}</Text>
-            </View>
-          </View>
-          
-          <View style={styles.statusRow}>
-            <Text style={styles.statusText}>{status}</Text>
             {item.level && (
               <View style={styles.levelBadge}>
                 <Text style={styles.levelText}>{item.level}</Text>
               </View>
             )}
           </View>
+          <Text style={styles.lastActive}>Active now</Text>
         </View>
       </TouchableOpacity>
     );
@@ -225,7 +323,7 @@ const Chat = ({ navigation }) => {
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#643bc5" />
-          <Text style={styles.loadingText}>Loading conversations...</Text>
+          <Text style={styles.loadingText}>Loading your chats...</Text>
         </View>
       </SafeAreaView>
     )
@@ -242,7 +340,7 @@ const Chat = ({ navigation }) => {
             onPress={() => {
               setLoading(true)
               setError(null)
-              fetchCurrentUser().then(fetchUsers).finally(() => setLoading(false))
+              fetchUsers().finally(() => setLoading(false))
             }}
           >
             <Text style={styles.retryText}>Try Again</Text>
@@ -252,70 +350,27 @@ const Chat = ({ navigation }) => {
     )
   }
 
+  // Add debug logging
+  console.log('Render state:', {
+    allUsersCount: allUsers.length,
+    filteredUsersCount: filteredUsers.length,
+    hasCurrentUser: !!currentUser
+  });
+
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle='dark-content' backgroundColor='#eedd70' />
+      <StatusBar barStyle='light-content' backgroundColor='#1c1835' />
       <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <Text style={styles.headerTitle}>Messages</Text>
-          <TouchableOpacity style={styles.newChatButton}>
-            <Feather name="edit" size={22} color="#eedd70" />
-          </TouchableOpacity>
-        </View>
-        
-        <View style={styles.searchContainer}>
-          <Feather name="search" size={20} color="#9bcfab" style={styles.searchIcon} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search conversations..."
-            placeholderTextColor="rgba(155, 207, 171, 0.6)"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity 
-              style={styles.clearButton}
-              onPress={() => setSearchQuery('')}
-            >
-              <Feather name="x" size={18} color="#9bcfab" />
-            </TouchableOpacity>
-          )}
-        </View>
+        <Text style={styles.headerTitle}>Your Chats</Text>
       </View>
       
-      {filteredUsers.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Image 
-            source={require('../assets/profile.webp')} 
-            style={styles.emptyImage}
-            defaultSource={require('../assets/profile.webp')}
-          />
-          <Text style={styles.emptyTitle}>No conversations yet</Text>
-          <Text style={styles.emptyText}>
-            Start chatting with your classmates to see conversations here
-          </Text>
-          <TouchableOpacity style={styles.startChatButton}>
-            <Text style={styles.startChatText}>Start a New Chat</Text>
-          </TouchableOpacity>
-        </View>
-      ) : (
-        <>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Recent Chats</Text>
-            <TouchableOpacity>
-              <Text style={styles.seeAllText}>See All</Text>
-            </TouchableOpacity>
-          </View>
-          
-          <FlatList
-            data={filteredUsers}
-            renderItem={renderUserItem}
-            keyExtractor={item => item.id.toString()}
-            contentContainerStyle={styles.listContainer}
-            showsVerticalScrollIndicator={false}
-          />
-        </>
-      )}
+      <FlatList
+        data={filteredUsers}
+        renderItem={renderUserItem}
+        keyExtractor={item => item.id.toString()}
+        contentContainerStyle={styles.listContainer}
+        showsVerticalScrollIndicator={false}
+      />
     </SafeAreaView>
   )
 }
@@ -328,66 +383,95 @@ const styles = StyleSheet.create({
     backgroundColor: '#1c1835',
   },
   header: {
-    padding: 16,
+    padding: 20,
+    paddingBottom: 15,
+    backgroundColor: '#1c1835',
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(100, 59, 197, 0.2)',
   },
-  headerTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
   headerTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
+    fontSize: 32,
+    fontWeight: '700',
     color: '#eedd70',
+    letterSpacing: 0.5,
   },
-  newChatButton: {
-    width: 40,
-    height: 40,
+  listContainer: {
+    padding: 12,
+  },
+  userItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    backgroundColor: 'rgba(100, 59, 197, 0.08)',
     borderRadius: 20,
-    backgroundColor: 'rgba(100, 59, 197, 0.3)',
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(100, 59, 197, 0.12)',
+  },
+  avatarWrapper: {
+    position: 'relative',
+    marginRight: 12,
+  },
+  avatar: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+  },
+  avatarContainer: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  searchContainer: {
+  onlineIndicator: {
+    position: 'absolute',
+    bottom: 2,
+    right: 2,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    borderWidth: 2,
+    borderColor: '#1c1835',
+  },
+  avatarText: {
+    color: '#fff',
+    fontSize: 22,
+    fontWeight: '700',
+  },
+  userInfo: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  nameContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(28, 24, 53, 0.8)',
+    marginBottom: 4,
+  },
+  userName: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#fff',
+    marginRight: 8,
+    letterSpacing: 0.3,
+  },
+  levelBadge: {
+    backgroundColor: 'rgba(238, 221, 112, 0.15)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(100, 59, 197, 0.5)',
-    paddingHorizontal: 12,
-    height: 46,
+    borderColor: 'rgba(238, 221, 112, 0.3)',
   },
-  searchIcon: {
-    marginRight: 8,
-  },
-  searchInput: {
-    flex: 1,
-    height: '100%',
-    color: '#fff',
-    fontSize: 16,
-  },
-  clearButton: {
-    padding: 6,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#9bcfab',
-  },
-  seeAllText: {
-    fontSize: 14,
+  levelText: {
     color: '#eedd70',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  lastActive: {
+    fontSize: 13,
+    color: '#9bcfab',
+    opacity: 0.8,
   },
   loadingContainer: {
     flex: 1,
@@ -398,6 +482,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
     fontSize: 16,
     color: '#9bcfab',
+    fontWeight: '500',
   },
   errorContainer: {
     flex: 1,
@@ -415,144 +500,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#643bc5',
     paddingHorizontal: 24,
     paddingVertical: 12,
-    borderRadius: 12,
+    borderRadius: 16,
     marginTop: 16,
   },
   retryText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
-  },
-  listContainer: {
-    paddingHorizontal: 16,
-    paddingBottom: 20,
-  },
-  userItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    backgroundColor: 'rgba(100, 59, 197, 0.1)',
-    borderRadius: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(100, 59, 197, 0.2)',
-  },
-  avatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    marginRight: 12,
-  },
-  avatarContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  avatarText: {
-    color: '#fff',
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  userInfo: {
-    flex: 1,
-  },
-  nameRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  userName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  timeStamp: {
-    fontSize: 12,
-    color: '#9bcfab',
-  },
-  messageRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  lastMessage: {
-    fontSize: 14,
-    color: 'rgba(155, 207, 171, 0.8)',
-    flex: 1,
-    marginRight: 8,
-  },
-  badgeContainer: {
-    backgroundColor: '#eedd70',
-    minWidth: 22,
-    height: 22,
-    borderRadius: 11,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 6,
-  },
-  badgeText: {
-    color: '#1c1835',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  statusRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  statusText: {
-    fontSize: 12,
-    color: 'rgba(238, 221, 112, 0.7)',
-    marginRight: 8,
-  },
-  levelBadge: {
-    backgroundColor: 'rgba(100, 59, 197, 0.3)',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
-  },
-  levelText: {
-    color: '#9bcfab',
-    fontSize: 11,
-    fontWeight: '500',
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  emptyImage: {
-    width: 120,
-    height: 120,
-    marginBottom: 20,
-    tintColor: 'rgba(155, 207, 171, 0.3)',
-  },
-  emptyTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#eedd70',
-    marginBottom: 8,
-  },
-  emptyText: {
-    fontSize: 16,
-    color: '#9bcfab',
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  startChatButton: {
-    backgroundColor: '#643bc5',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 12,
-  },
-  startChatText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+    letterSpacing: 0.3,
   },
 })

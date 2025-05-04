@@ -12,6 +12,8 @@ import TabNavigator from './src/navigation/TabNavigator'
 import Inbox from './src/screen/Inbox'
 import { API_URL } from './src/utils/config'
 import Profile from './src/screen/Profile'
+import { requestUserPermission } from './src/utils/notification'
+import { setupNotificationListeners } from './src/utils/notificationService'
 
 
 const Stack = createStackNavigator();
@@ -58,9 +60,13 @@ const AppContent = () => {
       } finally {
         setIsCheckingAuth(false);
       }
+
+      await requestUserPermission();
+      await setupNotificationListeners();
     };
 
     checkAuthState();
+
   }, []);
 
   console.log('Authenticated Status:', authenticated);

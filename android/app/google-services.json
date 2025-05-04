@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "910710690784",
+    "project_id": "shapechat-2f6f2",
+    "storage_bucket": "shapechat-2f6f2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:910710690784:android:7b16d6d10671a263355185",
+        "android_client_info": {
+          "package_name": "com.blackonedevs.shapechat"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDE4T61ggv4WXiafXyBeYUpJc-rdXZfgV0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

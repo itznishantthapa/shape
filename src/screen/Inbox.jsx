@@ -3,7 +3,8 @@ import React, { useEffect, useState, useRef } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { getAccessToken } from '../utils/secureStorage'
-
+import { getCache, setCache } from '../utils/cache'       
+import { checkNetStatus } from '../utils/netStatus'
 // Custom typing indicator component
 const TypingIndicator = ({ isTyping }) => {
   // References for the three animated dots
@@ -119,98 +120,20 @@ const TypingIndicator = ({ isTyping }) => {
 };
 
 const Inbox = ({ route, navigation }) => {
-  const { user, roomName, currentUser } = route.params
-  console.log('User:', user)
-  console.log('Room Name:', roomName)
-  console.log('Current User:', currentUser)
-  // Define the mock messages in chronological order
-  const originalMockMessages = [
-    {
-      id: 1,
-      message: "Hey, how are you doing?",
-      sender: "john@example.com",
-      isOwnMessage: false,
-      timestamp: "10:30 AM"
-    },
-    {
-      id: 2,
-      message: "I'm doing great! Just finished the project we were working on.",
-      sender: "example@gmail.com",
-      isOwnMessage: true,
-      timestamp: "10:32 AM"
-    },
-    {
-      id: 3,
-      message: "That's awesome! Can you share some details about it?",
-      sender: "john@example.com",
-      isOwnMessage: false,
-      timestamp: "10:33 AM"
-    },
-    {
-      id: 4,
-      message: "It's a chat application that uses WebSockets for real-time communication.",
-      sender: "example@gmail.com",
-      isOwnMessage: true,
-      timestamp: "10:34 AM"
-    },
-    {
-      id: 5,
-      message: "We've implemented message persistence, typing indicators, and read receipts.",
-      sender: "example@gmail.com",
-      isOwnMessage: true,
-      timestamp: "10:34 AM"
-    },
-    {
-      id: 6,
-      message: "That sounds really impressive! How long did it take?",
-      sender: "john@example.com",
-      isOwnMessage: false,
-      timestamp: "10:36 AM"
-    },
-    {
-      id: 7,
-      message: "About two weeks. The most challenging part was handling the WebSocket connections.",
-      sender: "example@gmail.com",
-      isOwnMessage: true,
-      timestamp: "10:38 AM"
-    },
-    {
-      id: 8,
-      message: "Would love to see a demo sometime!",
-      sender: "john@example.com",
-      isOwnMessage: false,
-      timestamp: "10:40 AM"
-    },
-    {
-      id: 9,
-      message: "I can set up a time next week if you're free.",
-      sender: "example@gmail.com",
-      isOwnMessage: true,
-      timestamp: "10:41 AM"
-    },
-    {
-      id: 10,
-      message: "By the way, how's your project coming along?",
-      sender: "example@gmail.com",
-      isOwnMessage: true,
-      timestamp: "10:42 AM"
-    },
-  ];
+  const { user, roomName, currentUser, privateChats } = route.params;
 
-  // Reverse the array for inverted FlatList (newest messages first)
-  const mockMessages = originalMockMessages.slice().reverse();
-
-  const [messages, setMessages] = useState(mockMessages)
-  const [message, setMessage] = useState('')
+  
+  // Sort and reverse initial messages to show newest messages at the top
+  // const sortedInitialMessages = [...(initialMessages || [])]
+  //   .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
+  //   .reverse();
+  
+  const [messages, setMessages] = useState(privateChats);
+  const [message, setMessage] = useState('');
   const socket = useRef(null);
   const typingTimeoutRef = useRef(null);
-  const flatListRef = useRef(null)
-
-  const [isTyping, setIsTyping] = useState(false)
-
-
-
-
+  const flatListRef = useRef(null);
+  const [isTyping, setIsTyping] = useState(false);
   const keyboardHeight = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -236,18 +159,11 @@ const Inbox = ({ route, navigation }) => {
     };
   }, []);
 
-
-
-
-
-
-
-
   useEffect(() => {
     const connectWebSocket = async () => {
       try {
-        // ws://192.168.1.72:8000/ws/chat/test1/
         socket.current = new WebSocket(`ws://192.168.1.72:8000/ws/chat/${roomName}/`);
+        
         socket.current.onopen = () => {
           console.log("Connected to WebSocket");
         };
@@ -258,12 +174,13 @@ const Inbox = ({ route, navigation }) => {
 
           if (data?.event_type === 'message') {
             const newMessage = {
-              id: Date.now(),
+              id: data.id,
               message: data.message,
-              isOwnMessage: false,
-              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              sender: data.sender,
+              timestamp: data.timestamp
             };
             addMessage(newMessage);
+             appendToCache(newMessage);
           }
           else if (data?.event_type === 'typing') {
             setIsTyping(data?.is_typing);
@@ -271,11 +188,7 @@ const Inbox = ({ route, navigation }) => {
         };
 
         socket.current.onerror = (e) => {
-          console.error("WebSocket error:", e.message);
-          console.error("WebSocket error code:", e.code);
-          console.error("WebSocket error type:", e.type);
-          console.error("WebSocket error target:", e.target);
-          console.error("Full WebSocket error object:", JSON.stringify(e, null, 2));
+          console.log('WebSocket error:', e)
         };
 
         socket.current.onclose = (e) => {
@@ -283,51 +196,82 @@ const Inbox = ({ route, navigation }) => {
         };
 
       } catch (error) {
-        console.error('Error connecting to WebSocket:', error)
+        console.log('Error connecting to WebSocket:', error)
       }
-    }
 
-    connectWebSocket()
+
+
+    };
+
+
+
+    connectWebSocket();
 
     return () => {
-      socket.current.close();
-    }
-  }, [])
+      if (socket.current) {
+        socket.current.close();
+      }
+    };
+  }, [roomName]);
 
-  // pre-preding messages
+  const appendToCache = async (newMessage) => {
+    console.log('Appending to cache.........')
+    const cachedMessages = await getCache(`private_chats_${roomName}`)
+    if(cachedMessages){
+      const ids = new Set(cachedMessages.map(msg => msg.id))
+      const merged = ids.has(newMessage.id) ? cachedMessages : [newMessage,...cachedMessages]
+      setCache(`private_chats_${roomName}`, merged)
+      console.log('Appending to cache successfull')
+    }}
+
+    // const merged = ids.has(message.id) 
+    // ? cachedMessages 
+    // : [...cachedMessages, message]
+
   const addMessage = (msg) => {
     setMessages(prevMessages => [msg, ...prevMessages]);
   };
 
   const sendMessage = () => {
     if (!message.trim()) return;
-
-    const data = {
-      id: Date.now(),
-      email: currentUser.email,
+    const messageData = {
+      sender: currentUser.email,
       event_type: "message",
-      message: message,
-      isOwnMessage: true,
-      
+      message: message.trim(),
     };
-    socket.current.send(JSON.stringify(data));
+    
+    socket.current.send(JSON.stringify(messageData));
     setMessage('');
-    addMessage(data);
-  }
+  };
 
-  const onChangeText = (text) => {
+  const onChangeText = async(text) => {
+    const netStatus = await checkNetStatus()
     setMessage(text);
-    socket.current.send(JSON.stringify({ event_type: "typing", is_typing: true }));
+    if(!netStatus) return
 
-    // Clear any existing timeout
-    if (typingTimeoutRef.current) {
-      clearTimeout(typingTimeoutRef.current);
+    // Check if socket exists and is in OPEN state (readyState === 1)
+    if (!socket.current || socket.current.readyState !== 1) {
+      console.log('WebSocket is not connected, cannot send typing status');
+      return;
     }
 
-    // Set new timeout using the ref
-    typingTimeoutRef.current = setTimeout(() => {
-      socket.current.send(JSON.stringify({ event_type: "typing", typing: false }));
-    }, 1000);
+    try {
+      socket.current.send(JSON.stringify({ event_type: "typing", is_typing: true }));
+      
+      // Clear any existing timeout
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+
+      // Set new timeout using the ref
+      typingTimeoutRef.current = setTimeout(() => {
+        if (socket.current && socket.current.readyState === 1) {
+          socket.current.send(JSON.stringify({ event_type: "typing", typing: false }));
+        }
+      }, 1000);
+    } catch (error) {
+      console.log('Error sending typing status:', error);
+    }
   }
 
   // Clean up the timeout when component unmounts
@@ -340,7 +284,8 @@ const Inbox = ({ route, navigation }) => {
   }, []);
 
   const renderMessage = ({ item }) => {
-    const isOwnMessage = item.isOwnMessage
+
+    const isOwnMessage = item.sender === currentUser.email;
 
     return (
       <View style={[
@@ -355,12 +300,6 @@ const Inbox = ({ route, navigation }) => {
         </Text>
         <View style={styles.messageFooter}>
           <Text style={[
-            styles.senderName,
-            isOwnMessage ? styles.ownSenderName : styles.otherSenderName
-          ]}>
-            {item.sender}
-          </Text>
-          <Text style={[
             styles.timestamp,
             isOwnMessage ? styles.ownTimestamp : styles.otherTimestamp
           ]}>
@@ -368,8 +307,8 @@ const Inbox = ({ route, navigation }) => {
           </Text>
         </View>
       </View>
-    )
-  }
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -399,7 +338,7 @@ const Inbox = ({ route, navigation }) => {
           ref={flatListRef}
           data={messages}
           renderItem={renderMessage}
-          keyExtractor={item => (item.id || Date.now()).toString()}
+          keyExtractor={item => item.id?.toString() || `msg_${item.timestamp}_${Math.random()}`}
           contentContainerStyle={styles.messagesContainer}
           removeClippedSubviews={false}
           showsVerticalScrollIndicator={true}
@@ -443,7 +382,6 @@ const Inbox = ({ route, navigation }) => {
         </KeyboardAvoidingView>
       </View>
     </SafeAreaView>
-
   )
 }
 
@@ -536,16 +474,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginTop: 6,
-  },
-  senderName: {
-    fontSize: 11,
-    fontWeight: '500',
-  },
-  ownSenderName: {
-    color: 'rgba(238, 221, 112, 0.8)',
-  },
-  otherSenderName: {
-    color: 'rgba(155, 207, 171, 0.8)',
   },
   timestamp: {
     fontSize: 11,

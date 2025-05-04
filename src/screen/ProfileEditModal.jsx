@@ -13,7 +13,8 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   PermissionsAndroid,
-  Platform
+  Platform,
+  Alert
 } from 'react-native';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { useAppContext } from '../../context/AppContext';
@@ -21,19 +22,30 @@ import { updateUserProfile } from '../utils/api';
 import { API_URL } from '../utils/config';
 import { launchImageLibrary } from 'react-native-image-picker';
 
-
-
-
-
-
-
 const { height } = Dimensions.get('window');
 
 const ProfileEditModal = ({ visible, onClose }) => {
-
   const { userState, userDispatch } = useAppContext();
 
+  // Local state for form data
+  const [formData, setFormData] = useState({
+    first_name: userState.first_name,
+    last_name: userState.last_name,
+    level: userState.level,
+    bio: userState.bio,
+    profile_pic: userState.profile_pic
+  });
 
+  // Update local state when userState changes (e.g. when modal reopens)
+  useEffect(() => {
+    setFormData({
+      first_name: userState.first_name,
+      last_name: userState.last_name,
+      level: userState.level,
+      bio: userState.bio,
+      profile_pic: userState.profile_pic
+    });
+  }, [userState]);
 
   // Animation value for sliding up
   const [slideAnim] = useState(new Animated.Value(height));
@@ -60,11 +72,22 @@ const ProfileEditModal = ({ visible, onClose }) => {
     }
   }, [visible]);
 
-  const handleSave = () => {
-    updateUserProfile(userState)
+  const handleSave = async () => {
+    try {
+      // First update the database
+      const result = await updateUserProfile(formData);
+      if (result.success) {
+        // If successful, update the context
+        userDispatch({ type: 'UPDATE_USER', payload: formData });
     onClose();
+      } else {
+        Alert.alert('Error', 'Failed to update profile. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      Alert.alert('Error', 'Failed to update profile. Please try again.');
+    }
   };
-
 
   const requestGalleryPermission = async () => {
     if (Platform.OS === 'android') {
@@ -81,10 +104,8 @@ const ProfileEditModal = ({ visible, onClose }) => {
       );
       return granted === PermissionsAndroid.RESULTS.GRANTED;
     }
-    // iOS handles permissions automatically
     return true;
   };
-
 
   const pickImage = async () => {
     const hasPermission = await requestGalleryPermission();
@@ -101,11 +122,10 @@ const ProfileEditModal = ({ visible, onClose }) => {
       } else {
         const asset = response.assets?.[0];
         console.log('Selected Image URI:', asset.type);
-        userDispatch({ type: 'UPDATE_USER', payload: { profile_pic: asset } });
+        setFormData(prev => ({ ...prev, profile_pic: asset }));
       }
     });
   };
-
 
   return (
     <Modal
@@ -148,15 +168,15 @@ const ProfileEditModal = ({ visible, onClose }) => {
                     <View style={styles.imageContainer}>
                       <Image
                         source={{
-                          uri: userState.profile_pic?.uri?.startsWith('file')
-                            ? userState.profile_pic.uri
-                            : `${API_URL}${userState.profile_pic}`,
+                          uri: formData.profile_pic?.uri?.startsWith('file')
+                            ? formData.profile_pic.uri
+                            : `${API_URL}${formData.profile_pic}`,
                         }}
                         style={styles.profileImage}
                       />
                       <TouchableOpacity
                         style={styles.imageEditButton}
-                        onPress={() => pickImage()}
+                        onPress={pickImage}
                       >
                         <Feather name="camera" size={18} color="#fff" />
                       </TouchableOpacity>
@@ -171,8 +191,8 @@ const ProfileEditModal = ({ visible, onClose }) => {
                         <View style={styles.inputWrapper}>
                           <TextInput
                             style={styles.input}
-                            value={userState.first_name}
-                            onChangeText={(text) => userDispatch({ type: 'UPDATE_USER', payload: { first_name: text } })}
+                            value={formData.first_name}
+                            onChangeText={(text) => setFormData(prev => ({ ...prev, first_name: text }))}
                             placeholder="First name"
                             placeholderTextColor="rgba(155, 207, 171, 0.6)"
                           />
@@ -184,8 +204,8 @@ const ProfileEditModal = ({ visible, onClose }) => {
                         <View style={styles.inputWrapper}>
                           <TextInput
                             style={styles.input}
-                            value={userState.last_name}
-                            onChangeText={(text) => userDispatch({ type: 'UPDATE_USER', payload: { last_name: text } })}
+                            value={formData.last_name}
+                            onChangeText={(text) => setFormData(prev => ({ ...prev, last_name: text }))}
                             placeholder="Last name"
                             placeholderTextColor="rgba(155, 207, 171, 0.6)"
                           />
@@ -195,45 +215,55 @@ const ProfileEditModal = ({ visible, onClose }) => {
 
                     <View style={styles.inputGroup}>
                       <Text style={styles.inputLabel}>Level</Text>
+                      <View style={styles.levelSelector}>
                       <TouchableOpacity
-                        style={styles.levelSelector}
+                          style={styles.inputWrapper}
                         onPress={() => setShowLevelSelector(!showLevelSelector)}
                       >
-                        <View style={styles.inputWrapper}>
-                          <Text style={styles.levelText}>{userState.level}</Text>
-                          <Feather name="chevron-down" size={18} color="#9bcfab" style={styles.dropdownIcon} />
-                        </View>
+                          <Text style={styles.levelText}>{formData.level || 'Select Level'}</Text>
+                          <Feather 
+                            name={showLevelSelector ? "chevron-up" : "chevron-down"} 
+                            size={18} 
+                            color="#9bcfab" 
+                            style={styles.dropdownIcon} 
+                          />
                       </TouchableOpacity>
 
                       {showLevelSelector && (
-                        <View style={styles.levelOptionsContainer}>
+                          <ScrollView 
+                            style={styles.levelOptionsContainer}
+                            nestedScrollEnabled={true}
+                            showsVerticalScrollIndicator={true}
+                          >
                           {levelOptions.map((level, index) => (
                             <TouchableOpacity
                               key={index}
                               style={[
                                 styles.levelOption,
-                                userState.level === level && styles.selectedLevelOption
+                                  formData.level === level && styles.selectedLevelOption,
+                                  index === levelOptions.length - 1 && { borderBottomWidth: 0 }
                               ]}
                               onPress={() => {
-                                userDispatch({ type: 'UPDATE_USER', payload: { level: level } })
+                                  setFormData(prev => ({ ...prev, level }));
                                 setShowLevelSelector(false);
                               }}
                             >
                               <Text
                                 style={[
                                   styles.levelOptionText,
-                                  userState.level === level && styles.selectedLevelOptionText
+                                    formData.level === level && styles.selectedLevelOptionText
                                 ]}
                               >
                                 {level}
                               </Text>
-                              {userState.level === level && (
+                                {formData.level === level && (
                                 <Ionicons name="checkmark" size={16} color="#eedd70" />
                               )}
                             </TouchableOpacity>
                           ))}
+                          </ScrollView>
+                        )}
                         </View>
-                      )}
                     </View>
 
                     <View style={styles.inputGroup}>
@@ -241,8 +271,8 @@ const ProfileEditModal = ({ visible, onClose }) => {
                       <View style={[styles.inputWrapper, styles.bioInputWrapper]}>
                         <TextInput
                           style={[styles.input, styles.bioInput]}
-                          value={userState.bio}
-                          onChangeText={(text) => userDispatch({ type: 'UPDATE_USER', payload: { bio: text } })}
+                          value={formData.bio}
+                          onChangeText={(text) => setFormData(prev => ({ ...prev, bio: text }))}
                           placeholder="Tell us about yourself..."
                           placeholderTextColor="rgba(155, 207, 171, 0.6)"
                           multiline
@@ -379,6 +409,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(100, 59, 197, 0.5)',
     overflow: 'hidden',
+    zIndex: 1,
   },
   bioInputWrapper: {
     alignItems: 'flex-start',
@@ -398,6 +429,7 @@ const styles = StyleSheet.create({
   },
   levelSelector: {
     width: '100%',
+    position: 'relative',
   },
   levelText: {
     flex: 1,
@@ -410,6 +442,11 @@ const styles = StyleSheet.create({
     paddingRight: 12,
   },
   levelOptionsContainer: {
+    position: 'absolute',
+    top: '100%',
+    left: 0,
+    right: 0,
+    zIndex: 1000,
     backgroundColor: 'rgba(28, 24, 53, 0.95)',
     borderRadius: 10,
     marginTop: 6,
@@ -417,13 +454,20 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(100, 59, 197, 0.5)',
     overflow: 'hidden',
     elevation: 5,
-    maxHeight: 150,
+    maxHeight: 200,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
   },
   levelOption: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 10,
+    paddingVertical: 12,
     paddingHorizontal: 12,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(100, 59, 197, 0.2)',

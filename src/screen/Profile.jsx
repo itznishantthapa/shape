@@ -5,6 +5,7 @@ import ProfileEditModal from './ProfileEditModal';
 import { useAppContext } from '../../context/AppContext';
 import { getUserProfile } from '../utils/api';
 import { API_URL } from '../utils/config';
+import { clearCache, getCache } from '../utils/cache';
 
 const Profile = ({ navigation }) => {
   const { userState, userDispatch } = useAppContext();
@@ -21,9 +22,21 @@ const Profile = ({ navigation }) => {
     return unsubscribe;
   }, [navigation, userState.first_name, userState.last_name]);
 
-  useEffect(() => {
 
-    getUserProfile(userDispatch);
+
+  useEffect(() => {
+    const loadUser = async () => {
+      const cachedUser = await getCache('user');
+      if (cachedUser) {
+        console.log('We Found User in Cache', cachedUser);
+        userDispatch({ type: 'SET_USER', payload: cachedUser });
+      } else {
+        console.log('No cached user, fetching from backend...');
+        getUserProfile(userDispatch);
+      }
+    };
+
+    loadUser();
 
     return () => {
       console.log('Profile component unmounted or dependencies changed');
