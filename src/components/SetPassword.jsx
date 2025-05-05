@@ -165,7 +165,7 @@ export default SetPassword
 const styles = StyleSheet.create({
   keyboardAvoidingView: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#000000',
   },
   scrollContent: {
     flexGrow: 1,
@@ -181,7 +181,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#000',
+    color: '#ffffff',
     textAlign: 'center',
   },
   spacer: {
@@ -193,12 +193,12 @@ const styles = StyleSheet.create({
   skipText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#000',
+    color: '#4a66f5',
   },
   content: {
     flex: 1,
     paddingHorizontal: 24,
-    paddingTop: 20,
+    paddingTop: 30,
   },
   form: {
     width: '100%',
@@ -207,49 +207,61 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   passwordContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: '#ddd',
+    position: 'relative',
   },
   input: {
-    flex: 1,
-    height: 50,
+    height: 56,
+    backgroundColor: '#111111',
+    paddingHorizontal: 16,
+    borderRadius: 12,
     fontSize: 16,
-    color: '#000',
-    paddingHorizontal: 0,
-  },
-  inputError: {
-    borderBottomColor: 'red',
+    color: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#333333',
+    paddingRight: 60,
   },
   visibilityToggle: {
-    padding: 10,
+    position: 'absolute',
+    right: 16,
+    top: 0,
+    height: '100%',
+    justifyContent: 'center',
   },
   visibilityToggleText: {
-    color: '#000',
+    color: '#aaaaaa',
     fontSize: 14,
     fontWeight: '500',
   },
+  inputError: {
+    borderColor: '#ff3b30',
+  },
   errorText: {
-    color: 'red',
+    color: '#ff3b30',
     fontSize: 12,
-    marginTop: 5,
+    marginTop: 4,
+    paddingLeft: 4,
   },
   button: {
-    backgroundColor: '#000',
-    height: 50,
+    backgroundColor: '#4a66f5',
+    height: 56,
     borderRadius: 12,
-    justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 20,
+    justifyContent: 'center',
   },
   buttonPressed: {
-    opacity: 0.9,
-    transform: [{ scale: 0.98 }],
+    opacity: 0.8,
   },
   buttonText: {
-    color: '#fff',
+    color: '#ffffff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  infoContainer: {
+    marginTop: 20,
+  },
+  infoText: {
+    fontSize: 14,
+    color: '#aaaaaa',
+    lineHeight: 20,
   },
 }); 

@@ -1,6 +1,9 @@
-import { StyleSheet, Text, View, TextInput, Pressable, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Keyboard, ScrollView, Animated } from 'react-native'
+import { StyleSheet, Text, View, TextInput, Pressable, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Keyboard, ScrollView, Animated, Dimensions } from 'react-native'
 import React, { useState, useEffect, useRef } from 'react'
 import { useAppContext } from '../../context/AppContext'
+import { MaterialIcons } from '@expo/vector-icons'
+
+const { width, height } = Dimensions.get('window')
 
 const OtpScreen = ({ onVerificationComplete, onGoBack }) => {
   // Get state from context
@@ -127,8 +130,6 @@ const OtpScreen = ({ onVerificationComplete, onGoBack }) => {
       const result = await verifyUserOtp();
       
       if (result.success) {
-
-        
         // Always call onVerificationComplete after successful verification
         // Pass the isNewUser value directly to ensure we have latest value
         onVerificationComplete(result.isNewUser);
@@ -185,22 +186,30 @@ const OtpScreen = ({ onVerificationComplete, onGoBack }) => {
   return (
     <KeyboardAvoidingView 
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.keyboardAvoidingView}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 10 : 30}
-      enabled
+      style={styles.mainContainer}
     >
       <ScrollView 
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={styles.container}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.content}>
+        <View style={styles.header}>
+          <Pressable 
+            onPress={handleGoBack} 
+            style={styles.backButton}
+            hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+          >
+            <MaterialIcons name="arrow-back-ios" size={24} color="#ffffff" />
+          </Pressable>
+          
           <Text style={styles.title}>Verification Code</Text>
           <Text style={styles.subtitle}>
-            We've sent a verification code to{"\n"}
-            <Text style={styles.emailText}>{email}</Text>
+            We've sent a verification code to
           </Text>
+          <Text style={styles.emailText}>{email}</Text>
+        </View>
 
+        <View style={styles.formContainer}>
           <View style={styles.otpContainer}>
             {renderOtpBoxes()}
             <TextInput
@@ -217,21 +226,29 @@ const OtpScreen = ({ onVerificationComplete, onGoBack }) => {
           <Pressable
             style={({pressed}) => [
               styles.button,
-              pressed && styles.buttonPressed
+              pressed && styles.buttonPressed,
+              otp.length !== 6 && styles.buttonDisabled
             ]}
             onPress={handleVerify}
-            disabled={loading || isAuthLoading}
+            disabled={loading || isAuthLoading || otp.length !== 6}
           >
             {loading || isAuthLoading ? (
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color="#fff" size="small" />
             ) : (
-              <Text style={styles.buttonText}>Verify</Text>
+              <>
+                <Text style={styles.buttonText}>Verify Code</Text>
+                <MaterialIcons name="arrow-forward" size={20} color="#ffffff" style={styles.buttonIcon} />
+              </>
             )}
           </Pressable>
 
           <View style={styles.resendContainer}>
             <Text style={styles.resendText}>Didn't receive the code? </Text>
-            <Pressable onPress={handleResendCode} disabled={!isResendActive}>
+            <Pressable 
+              onPress={handleResendCode} 
+              disabled={!isResendActive}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
               <Text 
                 style={[
                   styles.resendButton, 
@@ -242,10 +259,6 @@ const OtpScreen = ({ onVerificationComplete, onGoBack }) => {
               </Text>
             </Pressable>
           </View>
-
-          <Pressable onPress={handleGoBack} style={styles.backButton}>
-            <Text style={styles.backButtonText}>Change Email</Text>
-          </Pressable>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -255,34 +268,45 @@ const OtpScreen = ({ onVerificationComplete, onGoBack }) => {
 export default OtpScreen
 
 const styles = StyleSheet.create({
-  keyboardAvoidingView: {
+  mainContainer: {
     flex: 1,
+    backgroundColor: '#1c1835',
   },
-  scrollContent: {
+  container: {
     flexGrow: 1,
-  },
-  content: {
-    flex: 1,
     padding: 24,
+  },
+  header: {
+    marginTop: 40,
+    marginBottom: 40,
+  },
+  backButton: {
+    marginBottom: 24,
+    width: 40,
+    height: 40,
     alignItems: 'center',
     justifyContent: 'center',
   },
   title: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
-    color: '#0F172A',
-    marginBottom: 10,
-    textAlign: 'center',
+    color: '#ffffff',
+    marginBottom: 12,
   },
   subtitle: {
     fontSize: 16,
-    color: '#334155',
-    marginBottom: 40,
-    textAlign: 'center',
+    color: '#aaaaaa',
+    marginBottom: 8,
+    lineHeight: 22,
   },
   emailText: {
+    fontSize: 16,
     fontWeight: '600',
-    color: '#0F172A',
+    color: '#a29aff',
+  },
+  formContainer: {
+    width: '100%',
+    alignItems: 'center',
   },
   otpContainer: {
     flexDirection: 'row',
@@ -292,27 +316,28 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   otpBox: {
-    width: 45,
-    height: 55,
+    width: 50,
+    height: 60,
     borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
+    borderColor: '#232042',
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
+    backgroundColor: '#161529',
   },
   otpBoxFilled: {
-    borderColor: '#000',
-    backgroundColor: '#f8f8f8',
+    borderColor: '#a29aff',
+    backgroundColor: '#232042',
   },
   otpBoxActive: {
-    borderColor: '#000',
+    borderColor: '#a29aff',
     borderWidth: 2,
   },
   otpText: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: 'bold',
-    color: '#0F172A',
+    color: '#ffffff',
   },
   hiddenInput: {
     position: 'absolute',
@@ -321,50 +346,52 @@ const styles = StyleSheet.create({
     opacity: 0,
   },
   button: {
-    backgroundColor: '#000',
-    height: 56,
+    backgroundColor: '#232042',
+    height: 60,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     width: '100%',
+    flexDirection: 'row',
   },
   buttonPressed: {
     opacity: 0.8,
+    transform: [{ scale: 0.98 }],
+  },
+  buttonDisabled: {
+    opacity: 0.5,
   },
   buttonText: {
-    color: '#fff',
+    color: '#ffffff',
     fontSize: 16,
     fontWeight: '600',
+    marginRight: 8,
+  },
+  buttonIcon: {
+    marginLeft: 4,
   },
   resendContainer: {
     flexDirection: 'row',
-    marginTop: 20,
+    marginTop: 24,
     alignItems: 'center',
   },
   resendText: {
-    color: '#666',
+    color: '#aaaaaa',
+    fontSize: 14,
   },
   resendButton: {
-    color: '#000',
+    color: '#a29aff',
     fontWeight: '600',
+    fontSize: 14,
   },
   resendButtonDisabled: {
-    color: '#999',
-  },
-  backButton: {
-    marginTop: 20,
-    padding: 10,
-  },
-  backButtonText: {
-    color: '#000',
-    textDecorationLine: 'underline',
+    color: '#666666',
   },
   cursor: {
     position: 'absolute',
     width: 2,
     height: 24,
-    backgroundColor: '#000',
-    opacity: 0.7,
+    backgroundColor: '#ffffff',
     top: '50%',
     left: '50%',
     transform: [{ translateY: -12 }],

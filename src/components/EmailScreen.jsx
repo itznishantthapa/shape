@@ -11,14 +11,18 @@ import {
   Platform, 
   Keyboard, 
   ScrollView, 
-  Image 
+  Image,
+  Dimensions 
 } from 'react-native'
 import { useAppContext } from '../../context/AppContext'
 import { loginWithPassword } from '../utils/api'
 import { handleGoogleSignIn } from '../utils/googleSignIn'
 import { GoogleSignin } from "@react-native-google-signin/google-signin"
+import { MaterialIcons } from '@expo/vector-icons'
 
-const EmailScreen = ({ handleContinue, navigation }) => {
+const { width, height } = Dimensions.get('window')
+
+const EmailScreen = ({ handleContinue, navigation, onGoBack }) => {
   // Context state
   const { 
     email, 
@@ -29,12 +33,13 @@ const EmailScreen = ({ handleContinue, navigation }) => {
     setIsAuthLoading,
     changeToOtpScreen,
     setAuthenticated,
+    usePassword,
+    setUsePassword,
   } = useAppContext()
   
   // Local state
   const [loading, setLoading] = useState(false)
   const [errors, setErrors] = useState({})
-  const [usePassword, setUsePassword] = useState(false)
   const [password, setPassword] = useState('')
   const [passwordVisible, setPasswordVisible] = useState(false)
   
@@ -51,6 +56,16 @@ const EmailScreen = ({ handleContinue, navigation }) => {
     })
   }, [])
 
+  // Clean up on unmount
+  useEffect(() => {
+    return () => {
+      Keyboard.dismiss()
+      // Clear email and password when component unmounts
+      setEmail('')
+      setPassword('')
+    }
+  }, [])
+
   // Focus email input on initial render
   useEffect(() => {
     if (emailFocused && currentScreen === 'email' && inputRef.current && !firstRender.current) {
@@ -60,22 +75,6 @@ const EmailScreen = ({ handleContinue, navigation }) => {
     }
     firstRender.current = false
   }, [emailFocused, currentScreen])
-
-  // Dismiss keyboard on unmount
-  useEffect(() => {
-    return () => {
-      Keyboard.dismiss()
-    }
-  }, [])
-
-  // Focus password input when usePassword is toggled
-  useEffect(() => {
-    if (usePassword && passwordInputRef.current) {
-      setTimeout(() => {
-        passwordInputRef.current.focus()
-      }, 100)
-    }
-  }, [usePassword])
 
   // Form validation
   const validateForm = () => {
@@ -150,33 +149,46 @@ const EmailScreen = ({ handleContinue, navigation }) => {
     }
   }
 
+  // Update back button to dismiss keyboard
+  const handleBackPress = () => {
+    Keyboard.dismiss()
+    // Clear fields
+    setEmail('')
+    setPassword('')
+    onGoBack()
+  }
+
   // UI Components
   const renderEmailInput = () => (
     <View style={styles.inputContainer}>
-      <TextInput
-        ref={inputRef}
-        style={[styles.input, errors.email && styles.inputError]}
-        placeholder="example@mail.com"
-        placeholderTextColor="#777"
-        value={email}
-        onChangeText={setEmail}
-        keyboardType="email-address"
-        autoCapitalize="none"
-        returnKeyType={usePassword ? "next" : "done"}
-        onSubmitEditing={handleEmailSubmit}
-      />
+      <View style={styles.inputWrapper}>
+        <MaterialIcons name="alternate-email" size={22} color="#727888" style={styles.inputIcon} />
+        <TextInput
+          ref={inputRef}
+          style={[styles.input, errors.email && styles.inputError]}
+          placeholder="Enter your email address"
+          placeholderTextColor="#727888"
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          returnKeyType={usePassword ? "next" : "done"}
+          onSubmitEditing={handleEmailSubmit}
+        />
+      </View>
       {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
     </View>
   )
 
   const renderPasswordInput = () => (
     <View style={styles.inputContainer}>
-      <View style={styles.passwordContainer}>
+      <View style={[styles.inputWrapper, styles.passwordWrapper]}>
+        <MaterialIcons name="lock-outline" size={22} color="#727888" style={styles.inputIcon} />
         <TextInput
           ref={passwordInputRef}
-          style={[styles.input, styles.passwordInput, errors.password && styles.inputError]}
-          placeholder="Enter password"
-          placeholderTextColor="#777"
+          style={[styles.input, errors.password && styles.inputError]}
+          placeholder="Enter your password"
+          placeholderTextColor="#727888"
           value={password}
           onChangeText={setPassword}
           secureTextEntry={!passwordVisible}
@@ -188,9 +200,11 @@ const EmailScreen = ({ handleContinue, navigation }) => {
           style={styles.visibilityToggle}
           onPress={togglePasswordVisibility}
         >
-          <Text style={styles.visibilityToggleText}>
-            {passwordVisible ? 'Hide' : 'Show'}
-          </Text>
+          <MaterialIcons 
+            name={passwordVisible ? "visibility" : "visibility-off"} 
+            size={22} 
+            color="#727888" 
+          />
         </Pressable>
       </View>
       {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
@@ -207,85 +221,70 @@ const EmailScreen = ({ handleContinue, navigation }) => {
       disabled={loading || isAuthLoading}
     >
       {loading || isAuthLoading ? (
-        <ActivityIndicator color="#fff" />
+        <ActivityIndicator color="#fff" size="small" />
       ) : (
-        <Text style={styles.buttonText}>{usePassword ? 'Login' : 'Let\'s Go'}</Text>
+        <>
+          <Text style={styles.buttonText}>{usePassword ? 'Login' : 'Send OTP'}</Text>
+          <MaterialIcons name="arrow-forward" size={20} color="#ffffff" style={styles.buttonIcon} />
+        </>
       )}
     </Pressable>
   )
 
-  const renderCheckbox = () => (
-    <View style={styles.checkboxContainer}>
-      <Pressable 
-        style={styles.checkbox} 
-        onPress={() => setUsePassword(!usePassword)}
-      >
-        <View style={[styles.checkboxBox, usePassword && styles.checkboxChecked]}>
-          {usePassword && <Text style={styles.checkmark}>✓</Text>}
-        </View>
-        <Text style={styles.checkboxLabel}>Login With Password</Text>
-      </Pressable>
-    </View>
-  )
-
-  const renderGoogleButton = () => (
-    <>
-      <View style={styles.orContainer}>
-        <View style={styles.divider} />
-        <Text style={styles.orText}>OR</Text>
-        <View style={styles.divider} />
-      </View>
-      
-      <Pressable
-        style={({pressed}) => [
-          styles.googleButton,
-          pressed && styles.buttonPressed
-        ]}
-        onPress={handleGoogleSignIn}
-      >
-        <Image 
-          source={require('../assets/googlelogo.png')} 
-          style={styles.googleIcon} 
-          resizeMode="contain"
-        />
-        <Text style={styles.googleButtonText}>Continue with Google</Text>
-      </Pressable>
-    </>
+  // Updated back button
+  const renderBackButton = () => (
+    <Pressable 
+      onPress={handleBackPress} 
+      style={styles.backButton}
+      hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+    >
+      <MaterialIcons name="arrow-back-ios" size={24} color="#ffffff" />
+    </Pressable>
   )
 
   return (
     <KeyboardAvoidingView 
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.keyboardAvoidingView}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 10 : 30}
-      enabled
+      style={styles.mainContainer}
     >
       <ScrollView 
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={styles.container}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.content}>
-          <View style={styles.headerContainer}>
-            <Text style={styles.title}>Let's get you started.</Text>
-            <Text style={styles.subtitle}>Enter your email to continue.</Text>
-          </View>
-
-          <View style={styles.form}>
-            {renderEmailInput()}
-            {usePassword && renderPasswordInput()}
-            {renderContinueButton()}
-            {renderCheckbox()}
-            {renderGoogleButton()}
-          </View>
-        </View>
-        
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>
-            This site is protected by reCAPTCHA and the{"\n"}
-            Google <Text style={styles.footerLink}>Privacy Policy</Text> and{" "}
-            <Text style={styles.footerLink}>Terms of Service</Text> apply.
+        <View style={styles.header}>
+          {renderBackButton()}
+          <Text style={styles.title}>{usePassword ? 'Sign in' : 'Verify your email'}</Text>
+          <Text style={styles.subtitle}>
+            {usePassword 
+              ? 'Enter your credentials to continue' 
+              : 'We\'ll send you a one-time code to verify your identity'}
           </Text>
+        </View>
+
+        <View style={styles.formContainer}>
+          {renderEmailInput()}
+          {usePassword && renderPasswordInput()}
+          
+          {!usePassword && (
+            <Pressable 
+              style={styles.toggleAuthType}
+              onPress={() => setUsePassword(true)}
+            >
+              <Text style={styles.toggleAuthTypeText}>Login with password instead</Text>
+            </Pressable>
+          )}
+          
+          {usePassword && (
+            <Pressable 
+              style={styles.toggleAuthType}
+              onPress={() => setUsePassword(false)}
+            >
+              <Text style={styles.toggleAuthTypeText}>Use OTP verification instead</Text>
+            </Pressable>
+          )}
+          
+          {renderContinueButton()}
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -295,64 +294,63 @@ const EmailScreen = ({ handleContinue, navigation }) => {
 export default EmailScreen
 
 const styles = StyleSheet.create({
-  keyboardAvoidingView: {
+  mainContainer: {
     flex: 1,
+    backgroundColor: '#1c1835',
   },
-  scrollContent: {
+  container: {
     flexGrow: 1,
-    justifyContent: 'space-between',
-  },
-  content: {
-    flex: 1,
     padding: 24,
+  },
+  header: {
+    marginTop: 40,
+    marginBottom: 40,
+  },
+  backButton: {
+    marginBottom: 24,
+    width: 40,
+    height: 40,
+    alignItems: 'center',
     justifyContent: 'center',
   },
-  headerContainer: {
-    marginBottom: 20,
-  },
   title: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
-    color: '#0F172A',
-    marginBottom: 8,
+    color: '#ffffff',
+    marginBottom: 12,
   },
   subtitle: {
     fontSize: 16,
-    color: '#334155',
+    color: '#aaaaaa',
+    lineHeight: 22,
   },
-  form: {
+  formContainer: {
     width: '100%',
   },
   inputContainer: {
     marginBottom: 20,
   },
-  input: {
-    height: 56,
-    backgroundColor: '#f8f8f8',
-    paddingHorizontal: 16,
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 60,
+    backgroundColor: '#161529',
     borderRadius: 12,
-    fontSize: 16,
-    color: '#000',
+    paddingHorizontal: 16,
     borderWidth: 1,
-    borderColor: '#f0f0f0',
+    borderColor: '#232042',
   },
-  passwordContainer: {
+  passwordWrapper: {
     position: 'relative',
   },
-  passwordInput: {
-    paddingRight: 60, // Make room for the show/hide button
+  inputIcon: {
+    marginRight: 12,
   },
-  visibilityToggle: {
-    position: 'absolute',
-    right: 16,
-    top: 0,
+  input: {
+    flex: 1,
     height: '100%',
-    justifyContent: 'center',
-  },
-  visibilityToggleText: {
-    color: '#000',
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: 16,
+    color: '#ffffff',
   },
   inputError: {
     borderColor: '#ff3b30',
@@ -360,107 +358,43 @@ const styles = StyleSheet.create({
   errorText: {
     color: '#ff3b30',
     fontSize: 12,
-    marginTop: 4,
-    paddingLeft: 4,
+    marginTop: 6,
+    paddingLeft: 8,
   },
-  checkboxContainer: {
-    marginVertical: 12,
-    alignItems: 'center',
-  },
-  checkbox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  checkboxBox: {
-    width: 16,
-    height: 16,
-    borderRadius: 3,
-    borderWidth: 1,
-    borderColor: '#64748B',
-    alignItems: 'center',
+  visibilityToggle: {
+    paddingHorizontal: 10,
+    height: '100%',
     justifyContent: 'center',
-    marginRight: 6,
   },
-  checkboxChecked: {
-    backgroundColor: '#64748B',
-    borderColor: '#64748B',
+  toggleAuthType: {
+    alignSelf: 'flex-start',
+    marginBottom: 30,
+    paddingVertical: 6,
   },
-  checkmark: {
-    color: '#FFF',
-    fontSize: 10,
-    fontWeight: 'bold',
-  },
-  checkboxLabel: {
+  toggleAuthTypeText: {
+    color: '#a29aff',
     fontSize: 14,
-    color: '#64748B',
   },
   button: {
-    backgroundColor: '#000',
-    height: 56,
+    backgroundColor: '#232042',
+    height: 60,
     borderRadius: 12,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    marginTop: 10,
   },
   buttonPressed: {
     opacity: 0.8,
+    transform: [{ scale: 0.98 }],
   },
   buttonText: {
-    color: '#fff',
+    color: '#ffffff',
     fontSize: 16,
     fontWeight: '600',
+    marginRight: 8,
   },
-  footer: {
-    flexDirection: 'column',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingTop: 20,
-    paddingBottom: 40,
-    paddingHorizontal: 24,
-  },
-  footerText: {
-    color: '#64748B',
-    fontSize: 12,
-    textAlign: 'center',
-    lineHeight: 18,
-  },
-  footerLink: {
-    color: '#64748B',
-    textDecorationLine: 'underline',
-  },
-  orContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 20,
-    marginBottom: 20,
-  },
-  divider: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#f0f0f0',
-  },
-  orText: {
-    marginHorizontal: 12,
-    color: '#64748B',
-    fontSize: 12,
-  },
-  googleButton: {
-    backgroundColor: '#fff',
-    height: 56,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-  },
-  googleIcon: {
-    width: 24,
-    height: 24,
-    marginRight: 12,
-  },
-  googleButtonText: {
-    color: '#000',
-    fontSize: 16,
-    fontWeight: '600',
+  buttonIcon: {
+    marginLeft: 4,
   },
 }) 

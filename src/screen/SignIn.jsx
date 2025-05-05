@@ -1,10 +1,12 @@
-import { StyleSheet, Text, View, Animated } from 'react-native'
+import { StyleSheet, Text, View, Animated, StatusBar } from 'react-native'
 import React, { useRef, useEffect, useCallback } from 'react'
 import { useAppContext } from '../../context/AppContext'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import EmailScreen from '../components/EmailScreen'
 import OtpScreen from '../components/OtpScreen'
 import SetPassword from '../components/SetPassword'
+import AuthMethod from '../components/AuthMethod'
+
 
 const SignIn = ({navigation}) => {
   const { 
@@ -17,11 +19,13 @@ const SignIn = ({navigation}) => {
     setEmailFocused,
     setStatusbarTheme,
     isNewUser,
-    setAuthenticated
+    setAuthenticated,
+    setAnimateTransition
   } = useAppContext()
   
   // References to screens for smoother transitions
-  const emailScreenOpacity = useRef(new Animated.Value(1)).current
+  const authMethodScreenOpacity = useRef(new Animated.Value(1)).current
+  const emailScreenOpacity = useRef(new Animated.Value(0)).current
   const otpScreenOpacity = useRef(new Animated.Value(0)).current
   const passwordScreenOpacity = useRef(new Animated.Value(0)).current
 
@@ -34,21 +38,28 @@ const SignIn = ({navigation}) => {
     // Determine which screens to animate
     let screenFadingIn, screenFadingOut
     
-    if (toScreen === 'email') {
+    if (toScreen === 'authMethod') {
+      screenFadingIn = authMethodScreenOpacity
+      screenFadingOut = currentScreen === 'email' ? emailScreenOpacity : 
+                       (currentScreen === 'otp' ? otpScreenOpacity : passwordScreenOpacity)
+    } else if (toScreen === 'email') {
       screenFadingIn = emailScreenOpacity
-      screenFadingOut = currentScreen === 'otp' ? otpScreenOpacity : passwordScreenOpacity
+      screenFadingOut = currentScreen === 'authMethod' ? authMethodScreenOpacity :
+                       (currentScreen === 'otp' ? otpScreenOpacity : passwordScreenOpacity)
     } else if (toScreen === 'otp') {
       screenFadingIn = otpScreenOpacity
-      screenFadingOut = currentScreen === 'email' ? emailScreenOpacity : passwordScreenOpacity
+      screenFadingOut = currentScreen === 'email' ? emailScreenOpacity : 
+                       (currentScreen === 'authMethod' ? authMethodScreenOpacity : passwordScreenOpacity)
     } else if (toScreen === 'password') {
       screenFadingIn = passwordScreenOpacity
-      screenFadingOut = currentScreen === 'otp' ? otpScreenOpacity : emailScreenOpacity
+      screenFadingOut = currentScreen === 'otp' ? otpScreenOpacity : 
+                        (currentScreen === 'email' ? emailScreenOpacity : authMethodScreenOpacity)
     }
     
     // First fade out current screen
     Animated.timing(screenFadingOut, {
       toValue: 0,
-      duration: 250,
+      duration: 100,
       useNativeDriver: true,
     }).start(() => {
       // Then switch screens internally (no flicker)
@@ -57,13 +68,19 @@ const SignIn = ({navigation}) => {
       // Finally fade in the new screen
       Animated.timing(screenFadingIn, {
         toValue: 1,
-        duration: 250,
+        duration: 100,
         useNativeDriver: true,
       }).start(() => {
         setIsAnimating(false)
       })
     })
-  }, [isAnimating, setCurrentScreen, setIsAnimating, currentScreen])
+  }, [isAnimating, setCurrentScreen, setIsAnimating, currentScreen, authMethodScreenOpacity, emailScreenOpacity, otpScreenOpacity, passwordScreenOpacity])
+
+  // Update the useEffect to set the animateTransition function in context
+  useEffect(() => {
+    // Set the animateTransition function in context so child components can use it
+    setAnimateTransition(() => animateTransition);
+  }, [animateTransition, setAnimateTransition]);
 
   const handleContinue = useCallback((emailValue) => {
     // Using context's changeToOtpScreen method would be simpler,
@@ -89,6 +106,10 @@ const SignIn = ({navigation}) => {
     animateTransition('email')
   }, [animateTransition, setEmailFocused])
 
+  const handleGoBackToAuth = useCallback(() => {
+    animateTransition('authMethod')
+  }, [animateTransition])
+
   const handleSkip = useCallback(() => {
     setAuthenticated(true);
   }, [setAuthenticated])
@@ -101,7 +122,23 @@ const SignIn = ({navigation}) => {
   // This prevents the flickering during transitions
   return (
     <SafeAreaView style={styles.container}>
+      <StatusBar barStyle='dark-content' backgroundColor={'#1c1835'} />
       <View style={styles.screensContainer}>
+        <Animated.View
+          style={[
+            styles.screenContainer,
+            styles.absolutePosition,
+            { 
+              opacity: authMethodScreenOpacity,
+              zIndex: currentScreen === 'authMethod' ? 3 : 1,
+            }
+          ]}
+        >
+          <AuthMethod 
+            navigation={navigation}
+          />
+        </Animated.View>
+
         <Animated.View
           style={[
             styles.screenContainer,
@@ -115,6 +152,7 @@ const SignIn = ({navigation}) => {
           <EmailScreen 
             handleContinue={handleContinue}
             navigation={navigation}
+            onGoBack={handleGoBackToAuth}
           />
         </Animated.View>
         
@@ -159,7 +197,7 @@ export default SignIn
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#1c1835',
   },
   screensContainer: {
     flex: 1,

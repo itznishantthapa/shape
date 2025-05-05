@@ -26,7 +26,8 @@ export const AppProvider = ({ children }) => {
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
   const [password, setPassword] = useState('');
-  const [currentScreen, setCurrentScreen] = useState('email');
+  const [usePassword, setUsePassword] = useState(false);
+  const [currentScreen, setCurrentScreen] = useState('authMethod');
   const [isAuthLoading, setIsAuthLoading] = useState(false);
   const [emailFocused, setEmailFocused] = useState(false);
   const [isNewUser, setIsNewUser] = useState(false);
@@ -40,6 +41,7 @@ export const AppProvider = ({ children }) => {
 
   // Navigation and transitions
   const [isAnimating, setIsAnimating] = useState(false);
+  const [animateTransition, setAnimateTransition] = useState(null);
   
   // Authentication methods
   const clearAuthStates = () => {
@@ -79,11 +81,11 @@ export const AppProvider = ({ children }) => {
     setIsAuthLoading(true);
     try {
       // Send OTP to the provided email
+      setCurrentScreen('otp');
       const result = await sendOTP(emailValue);
       
       if (result.success) {
         setEmail(emailValue);
-        setCurrentScreen('otp');
         startOtpTimer();
       } else {
         Alert.alert('Error', result.error || 'Failed to send OTP. Please try again.');
@@ -233,6 +235,8 @@ export const AppProvider = ({ children }) => {
         setOtp,
         password,
         setPassword,
+        usePassword,
+        setUsePassword,
         currentScreen,
         setCurrentScreen,
         isAuthLoading,
@@ -257,6 +261,8 @@ export const AppProvider = ({ children }) => {
         // Navigation/transitions
         isAnimating,
         setIsAnimating,
+        animateTransition,
+        setAnimateTransition,
         
         // Methods
         clearAuthStates,
