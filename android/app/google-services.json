@@ -12,7 +12,20 @@
           "package_name": "com.blackonedevs.shapechat"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "910710690784-7to3f77cn36bppno7j8u8svagnrpvj63.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.blackonedevs.shapechat",
+            "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
+          }
+        },
+        {
+          "client_id": "910710690784-r7iksbeb63oamj5uaocb4qs3va1qpvhc.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyDE4T61ggv4WXiafXyBeYUpJc-rdXZfgV0"
@@ -20,7 +33,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "910710690784-r7iksbeb63oamj5uaocb4qs3va1qpvhc.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

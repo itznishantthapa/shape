@@ -45,6 +45,7 @@ export const setupNotificationListeners = async () => {
     const unsubscribeOnMessage = onMessage(messaging, async remoteMessage => {
       console.log('Received foreground message:', remoteMessage);
       if (remoteMessage?.notification) {
+
         const { title, body } = remoteMessage.notification;
         console.log('Notification Title:', title || 'No Title');
         console.log('Notification Body:', body || 'No Body');

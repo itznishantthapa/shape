@@ -1,10 +1,25 @@
-import { StyleSheet, Text, View, TextInput, Pressable, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Keyboard, ScrollView, Image } from 'react-native'
 import React, { useState, useEffect, useRef } from 'react'
+import { 
+  StyleSheet, 
+  Text, 
+  View, 
+  TextInput, 
+  Pressable, 
+  ActivityIndicator, 
+  Alert, 
+  KeyboardAvoidingView, 
+  Platform, 
+  Keyboard, 
+  ScrollView, 
+  Image 
+} from 'react-native'
 import { useAppContext } from '../../context/AppContext'
 import { loginWithPassword } from '../utils/api'
+import { handleGoogleSignIn } from '../utils/googleSignIn'
+import { GoogleSignin } from "@react-native-google-signin/google-signin"
 
 const EmailScreen = ({ handleContinue, navigation }) => {
-  // Get state from context
+  // Context state
   const { 
     email, 
     setEmail, 
@@ -16,55 +31,62 @@ const EmailScreen = ({ handleContinue, navigation }) => {
     setAuthenticated,
   } = useAppContext()
   
+  // Local state
   const [loading, setLoading] = useState(false)
   const [errors, setErrors] = useState({})
   const [usePassword, setUsePassword] = useState(false)
   const [password, setPassword] = useState('')
   const [passwordVisible, setPasswordVisible] = useState(false)
-  const inputRef = useRef(null);
-  const passwordInputRef = useRef(null);
-  const firstRender = useRef(true);
+  
+  // Refs
+  const inputRef = useRef(null)
+  const passwordInputRef = useRef(null)
+  const firstRender = useRef(true)
 
-  // Focus input when emailFocused is true and component is visible
+  // Configure Google Sign-in
   useEffect(() => {
-    // This condition ensures input is focused only when emailFocused is true
-    // and we're on the email screen, and not on first render
+    GoogleSignin.configure({
+      scopes: ['email'],
+      webClientId: "910710690784-r7iksbeb63oamj5uaocb4qs3va1qpvhc.apps.googleusercontent.com",
+    })
+  }, [])
+
+  // Focus email input on initial render
+  useEffect(() => {
     if (emailFocused && currentScreen === 'email' && inputRef.current && !firstRender.current) {
       setTimeout(() => {
-        inputRef.current.focus();
-      }, 300); // Small delay to ensure focus happens after animation
+        inputRef.current.focus()
+      }, 300)
     }
-    // Mark first render as complete after the first effect run
-    firstRender.current = false;
-  }, [emailFocused, currentScreen]);
+    firstRender.current = false
+  }, [emailFocused, currentScreen])
 
-  // Clean up keyboard on unmount
+  // Dismiss keyboard on unmount
   useEffect(() => {
     return () => {
       Keyboard.dismiss()
     }
   }, [])
 
-  // Focus password input when usePassword is toggled to true
+  // Focus password input when usePassword is toggled
   useEffect(() => {
     if (usePassword && passwordInputRef.current) {
       setTimeout(() => {
-        passwordInputRef.current.focus();
-      }, 100);
+        passwordInputRef.current.focus()
+      }, 100)
     }
-  }, [usePassword]);
+  }, [usePassword])
 
+  // Form validation
   const validateForm = () => {
     let newErrors = {}
     
-    // Email validation
     if (!email) {
       newErrors.email = 'Email is required'
     } else if (!/\S+@\S+\.\S+/.test(email)) {
       newErrors.email = 'Email is invalid'
     }
     
-    // Password validation if usePassword is checked
     if (usePassword && !password) {
       newErrors.password = 'Password is required'
     }
@@ -73,25 +95,23 @@ const EmailScreen = ({ handleContinue, navigation }) => {
     return Object.keys(newErrors).length === 0
   }
 
+  // Handlers
   const handlePasswordSubmit = async () => {
     Keyboard.dismiss()
     if (validateForm()) {
-      setLoading(true);
+      setLoading(true)
       try {
-        // Call the login API
-        const result = await loginWithPassword(email, password);
+        const result = await loginWithPassword(email, password)
         
         if (result.success) {
-          // Navigate directly to home screen
-          // navigation.navigate('MainTabs');
-          setAuthenticated(true);
+          setAuthenticated(true)
         } else {
-          Alert.alert("Login Failed", result.error || "Invalid email or password");
+          Alert.alert("Login Failed", result.error || "Invalid email or password")
         }
       } catch (error) {
-        Alert.alert("Error", error.message || 'Something went wrong');
+        Alert.alert("Error", error.message || 'Something went wrong')
       } finally {
-        setLoading(false);
+        setLoading(false)
       }
     }
   }
@@ -99,39 +119,139 @@ const EmailScreen = ({ handleContinue, navigation }) => {
   const onContinue = async () => {
     Keyboard.dismiss()
     if (validateForm()) {
-      setLoading(true);
+      setLoading(true)
       try {
         if (usePassword) {
-          // Use password login flow
-          await handlePasswordSubmit();
+          await handlePasswordSubmit()
         } else {
-          // Use OTP flow
-          const result = await changeToOtpScreen(email);
+          await changeToOtpScreen(email)
           
-          // If successful, call parent's handleContinue to transition to OTP screen
           if (handleContinue) {
-            handleContinue(email);
+            handleContinue(email)
           }
         }
       } catch (error) {
-        Alert.alert("Error", error.message || 'Something went wrong');
+        Alert.alert("Error", error.message || 'Something went wrong')
       } finally {
-        setLoading(false);
+        setLoading(false)
       }
     }
   }
 
   const togglePasswordVisibility = () => {
-    setPasswordVisible(!passwordVisible);
+    setPasswordVisible(!passwordVisible)
   }
 
   const handleEmailSubmit = () => {
     if (usePassword && passwordInputRef.current) {
-      passwordInputRef.current.focus();
+      passwordInputRef.current.focus()
     } else {
-      onContinue();
+      onContinue()
     }
   }
+
+  // UI Components
+  const renderEmailInput = () => (
+    <View style={styles.inputContainer}>
+      <TextInput
+        ref={inputRef}
+        style={[styles.input, errors.email && styles.inputError]}
+        placeholder="example@mail.com"
+        placeholderTextColor="#777"
+        value={email}
+        onChangeText={setEmail}
+        keyboardType="email-address"
+        autoCapitalize="none"
+        returnKeyType={usePassword ? "next" : "done"}
+        onSubmitEditing={handleEmailSubmit}
+      />
+      {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
+    </View>
+  )
+
+  const renderPasswordInput = () => (
+    <View style={styles.inputContainer}>
+      <View style={styles.passwordContainer}>
+        <TextInput
+          ref={passwordInputRef}
+          style={[styles.input, styles.passwordInput, errors.password && styles.inputError]}
+          placeholder="Enter password"
+          placeholderTextColor="#777"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry={!passwordVisible}
+          autoCapitalize="none"
+          returnKeyType="done"
+          onSubmitEditing={onContinue}
+        />
+        <Pressable 
+          style={styles.visibilityToggle}
+          onPress={togglePasswordVisibility}
+        >
+          <Text style={styles.visibilityToggleText}>
+            {passwordVisible ? 'Hide' : 'Show'}
+          </Text>
+        </Pressable>
+      </View>
+      {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
+    </View>
+  )
+
+  const renderContinueButton = () => (
+    <Pressable
+      style={({pressed}) => [
+        styles.button,
+        pressed && styles.buttonPressed
+      ]}
+      onPress={onContinue}
+      disabled={loading || isAuthLoading}
+    >
+      {loading || isAuthLoading ? (
+        <ActivityIndicator color="#fff" />
+      ) : (
+        <Text style={styles.buttonText}>{usePassword ? 'Login' : 'Let\'s Go'}</Text>
+      )}
+    </Pressable>
+  )
+
+  const renderCheckbox = () => (
+    <View style={styles.checkboxContainer}>
+      <Pressable 
+        style={styles.checkbox} 
+        onPress={() => setUsePassword(!usePassword)}
+      >
+        <View style={[styles.checkboxBox, usePassword && styles.checkboxChecked]}>
+          {usePassword && <Text style={styles.checkmark}>✓</Text>}
+        </View>
+        <Text style={styles.checkboxLabel}>Login With Password</Text>
+      </Pressable>
+    </View>
+  )
+
+  const renderGoogleButton = () => (
+    <>
+      <View style={styles.orContainer}>
+        <View style={styles.divider} />
+        <Text style={styles.orText}>OR</Text>
+        <View style={styles.divider} />
+      </View>
+      
+      <Pressable
+        style={({pressed}) => [
+          styles.googleButton,
+          pressed && styles.buttonPressed
+        ]}
+        onPress={handleGoogleSignIn}
+      >
+        <Image 
+          source={require('../assets/googlelogo.png')} 
+          style={styles.googleIcon} 
+          resizeMode="contain"
+        />
+        <Text style={styles.googleButtonText}>Continue with Google</Text>
+      </Pressable>
+    </>
+  )
 
   return (
     <KeyboardAvoidingView 
@@ -152,100 +272,11 @@ const EmailScreen = ({ handleContinue, navigation }) => {
           </View>
 
           <View style={styles.form}>
-            <View style={styles.inputContainer}>
-              <TextInput
-                ref={inputRef}
-                style={[styles.input, errors.email && styles.inputError]}
-                placeholder="example@mail.com"
-                placeholderTextColor="#777"
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                returnKeyType={usePassword ? "next" : "done"}
-                onSubmitEditing={handleEmailSubmit}
-              />
-              {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
-            </View>
-
-            {usePassword && (
-              <View style={styles.inputContainer}>
-                <View style={styles.passwordContainer}>
-                  <TextInput
-                    ref={passwordInputRef}
-                    style={[styles.input, styles.passwordInput, errors.password && styles.inputError]}
-                    placeholder="Enter password"
-                    placeholderTextColor="#777"
-                    value={password}
-                    onChangeText={setPassword}
-                    secureTextEntry={!passwordVisible}
-                    autoCapitalize="none"
-                    returnKeyType="done"
-                    onSubmitEditing={onContinue}
-                  />
-                  <Pressable 
-                    style={styles.visibilityToggle}
-                    onPress={togglePasswordVisibility}
-                  >
-                    <Text style={styles.visibilityToggleText}>
-                      {passwordVisible ? 'Hide' : 'Show'}
-                    </Text>
-                  </Pressable>
-                </View>
-                {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
-              </View>
-            )}
-
-            <Pressable
-              style={({pressed}) => [
-                styles.button,
-                pressed && styles.buttonPressed
-              ]}
-              onPress={onContinue}
-              disabled={loading || isAuthLoading}
-            >
-              {loading || isAuthLoading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.buttonText}>{usePassword ? 'Login' : 'Let\'s Go'}</Text>
-              )}
-            </Pressable>
-            
-            <View style={styles.checkboxContainer}>
-              <Pressable 
-                style={styles.checkbox} 
-                onPress={() => setUsePassword(!usePassword)}
-              >
-                <View style={[styles.checkboxBox, usePassword && styles.checkboxChecked]}>
-                  {usePassword && <Text style={styles.checkmark}>✓</Text>}
-                </View>
-                <Text style={styles.checkboxLabel}>Login With Password</Text>
-              </Pressable>
-            </View>
-
-            <View style={styles.orContainer}>
-              <View style={styles.divider} />
-              <Text style={styles.orText}>OR</Text>
-              <View style={styles.divider} />
-            </View>
-            
-            <Pressable
-              style={({pressed}) => [
-                styles.googleButton,
-                pressed && styles.buttonPressed
-              ]}
-              onPress={() => {
-                // Handle Google Sign In
-                Alert.alert("Google Sign In", "Google sign in functionality will be implemented here")
-              }}
-            >
-              <Image 
-                source={require('../assets/googlelogo.png')} 
-                style={styles.googleIcon} 
-                resizeMode="contain"
-              />
-              <Text style={styles.googleButtonText}>Continue with Google</Text>
-            </Pressable>
+            {renderEmailInput()}
+            {usePassword && renderPasswordInput()}
+            {renderContinueButton()}
+            {renderCheckbox()}
+            {renderGoogleButton()}
           </View>
         </View>
         

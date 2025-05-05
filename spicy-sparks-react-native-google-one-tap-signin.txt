@@ -1,0 +1,1055 @@
+Directory structure:
+└── spicy-sparks-react-native-google-one-tap-signin/
+    ├── README.md
+    ├── babel.config.js
+    ├── CONTRIBUTING.md
+    ├── index.js
+    ├── LICENSE
+    ├── metro.config.js
+    ├── package.json
+    ├── react-native.config.js
+    ├── .editorconfig
+    ├── .eslintignore
+    ├── .eslintrc.js
+    ├── .npmignore
+    ├── .prettierignore
+    ├── .prettierrc.json
+    ├── android/
+    │   ├── gradle.properties
+    │   ├── gradlew
+    │   ├── gradlew.bat
+    │   ├── gradle/
+    │   │   └── wrapper/
+    │   │       └── gradle-wrapper.properties
+    │   └── src/
+    │       └── main/
+    │           ├── AndroidManifest.xml
+    │           └── java/
+    │               └── com/
+    │                   └── spicysparks/
+    │                       └── googleonetapsignin/
+    │                           ├── RNGoogleOneTapSignInModule.java
+    │                           └── RNGoogleOneTapSignInPackage.java
+    ├── src/
+    │   └── GoogleOneTapSignIn.js
+    └── .circleci/
+        └── config.yml
+
+================================================
+FILE: README.md
+================================================
+# react-native-mediastore
+
+React Native Google One Tip Signin (only Android)
+
+## Installation
+
+```sh
+npm install react-native-google-one-tap-signin
+```
+
+```sh
+yarn add react-native-google-one-tap-signin
+```
+
+## Usage
+
+```js
+
+import GoogleOneTapSignIn from "react-native-google-one-tap-signin";
+
+const handleSignIn = async () => {
+  try {
+    await GoogleOneTapSignIn.configure({
+      webClientId: GOOGLE_ONE_TAP_SIGN_IN,
+    })
+    
+    const userInfo = await GoogleOneTapSignIn.signIn()
+
+    if (!userInfo || !userInfo.idToken) {
+      console.error('GoogleOneTapSignIn error', 'There was some issue with getting id token', userInfo)
+      return
+    }
+
+    // YOUR USER HERE
+    // You can store this value in store or sign in to your backend
+    console.log(userInfo)
+
+  } catch (error) {
+    // We might want to provide this error information to an error reporting service
+    console.error('GoogleOneTapSignIn error', error)
+  }
+}
+
+```
+
+## Contributing
+
+See the [contributing guide](CONTRIBUTING.md) to learn how to contribute to the repository and the development workflow.
+
+## License
+
+MIT
+
+
+
+================================================
+FILE: babel.config.js
+================================================
+module.exports = {
+  presets: ['module:metro-react-native-babel-preset'],
+};
+
+
+
+================================================
+FILE: CONTRIBUTING.md
+================================================
+## Contributor Guide
+
+Want to add a feature or fix a bug? Great! This short guide will help.
+
+Development is best done using the example project. After you clone the repo, see the example project's [readme](../example/README.md) for instructions on how to get it running.
+
+When done, the example project should build successfully on both platforms and you should be able to sign in using the example app.
+
+### Making Changes to Native Code
+
+If you want to make changes to native code, just go ahead and import the example project into Android Studio, or open the `GoogleSigninSampleApp.xcworkspace` file in Xcode.
+
+In Android Studio you'll see the reference to the `react-native-google-signin` project.
+in Xcode, under Pods project, there'll be `RNGoogleOneTapSignIn` project.
+
+You may edit the source codes of those projects - that will edit the files in the `android` and `ios` folders in the repo root (not in `node_modules`) so you can easily commit those changes.
+
+### Making Changes to JS Code
+
+Just edit them straight away.
+
+### Finalize
+
+- From the root of the repo run `yarn prettier:write` to prettify the JS files.
+- Open a PR with your changes! :tada:
+
+
+
+================================================
+FILE: index.js
+================================================
+export { GoogleOneTapSignInSingleton as GoogleOneTapSignIn } from './src/GoogleOneTapSignIn';
+
+
+
+================================================
+FILE: LICENSE
+================================================
+The MIT License (MIT)
+
+Copyright (c) 2015 Apptailor
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+
+
+
+================================================
+FILE: metro.config.js
+================================================
+/**
+ * Metro configuration for React Native
+ * https://github.com/facebook/react-native
+ *
+ * @format
+ */
+
+module.exports = {
+  transformer: {
+    getTransformOptions: async () => ({
+      transform: {
+        experimentalImportSupport: false,
+        inlineRequires: false,
+      },
+    }),
+  },
+};
+
+
+
+================================================
+FILE: package.json
+================================================
+{
+  "name": "react-native-google-one-tap-signin",
+  "version": "1.0.8",
+  "description": "Google One Tap Sign In for your react native applications",
+  "main": "index.js",
+  "author": {
+    "name": "Spicy Sparks",
+    "email": "support@spicysparks.com",
+    "url": "https://github.com/Spicy-Sparks"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
+  },
+  "scripts": {
+    "android": "react-native run-android --root example/",
+    "ios": "react-native run-ios",
+    "start": "node node_modules/react-native/local-cli/cli.js start",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "prettier:check": "prettier --list-different '**/*.js' '**/*.md'",
+    "prettier:write": "prettier --write '**/*.js' '**/*.md'",
+    "lint": "eslint ."
+  },
+  "keywords": [
+    "react-component",
+    "react-native",
+    "google one tap signin",
+    "google login",
+    "oauth",
+    "oauth2",
+    "android"
+  ],
+  "homepage": "https://github.com/Spicy-Sparks/react-native-google-one-tap-signin",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Spicy-Sparks/react-native-google-one-tap-signin"
+  },
+  "bugs": {
+    "url": "https://github.com/Spicy-Sparks/react-native-google-one-tap-signin/issues"
+  },
+  "peerDependencies": {
+    "prop-types": "*",
+    "react": "*",
+    "react-native": "*"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@babel/core": "^7.6.2",
+    "@babel/runtime": "^7.6.2",
+    "@react-native-community/eslint-config": "^0.0.5",
+    "babel-jest": "^24.9.0",
+    "eslint": "^6.4.0",
+    "eslint-plugin-prettier": "^3.1.2",
+    "jest": "^24.9.0",
+    "metro-react-native-babel-preset": "^0.56.0",
+    "prettier": "1.14.2",
+    "react": "16.9.0",
+    "react-native": "0.61.1",
+    "react-test-renderer": "16.9.0"
+  }
+}
+
+
+
+================================================
+FILE: react-native.config.js
+================================================
+const root = process.cwd();
+
+module.exports = {
+  dependencies: {
+    // the key here does not matter as long as it's not referenced from native files
+    // CLI will use root to find podspec and android module.
+    'react-native-google-one-tap-signin': {
+      root,
+    },
+  },
+};
+
+
+
+================================================
+FILE: .editorconfig
+================================================
+# editorconfig.org
+root = true
+
+[*]
+indent_style = space
+indent_size = 2
+end_of_line = lf
+charset = utf-8
+trim_trailing_whitespace = true
+insert_final_newline = true
+
+
+
+
+================================================
+FILE: .eslintignore
+================================================
+node_modules
+
+
+================================================
+FILE: .eslintrc.js
+================================================
+module.exports = {
+  extends: ['@react-native-community'],
+};
+
+
+
+================================================
+FILE: .npmignore
+================================================
+img
+example
+.github
+docs
+
+# OSX
+#
+.DS_Store
+
+# Xcode
+#
+build/
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+!default.mode1v3
+*.mode2v3
+!default.mode2v3
+*.perspectivev3
+!default.perspectivev3
+xcuserdata
+*.xccheckout
+*.moved-aside
+DerivedData
+*.hmap
+*.ipa
+*.xcuserstate
+project.xcworkspace
+
+# Android/IJ
+#
+.idea
+.gradle
+local.properties
+*.iml
+local.properties
+.idea/workspace.xml
+.idea/libraries
+build
+captures
+
+# node.js
+#
+node_modules/
+npm-debug.log
+
+# BUCK
+buck-out/
+\.buckd/
+android/app/libs
+android/keystores/debug.keystore
+
+
+
+================================================
+FILE: .prettierignore
+================================================
+example/ios/Pods
+
+
+
+================================================
+FILE: .prettierrc.json
+================================================
+{
+  "printWidth": 100,
+  "singleQuote": true,
+  "trailingComma": "es5"
+}
+
+
+
+================================================
+FILE: android/gradle.properties
+================================================
+android.enableJetifier=true
+android.useAndroidX=true
+
+
+================================================
+FILE: android/gradlew
+================================================
+#!/usr/bin/env sh
+
+#
+# Copyright 2015 the original author or authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+##############################################################################
+##
+##  Gradle start up script for UN*X
+##
+##############################################################################
+
+# Attempt to set APP_HOME
+# Resolve links: $0 may be a link
+PRG="$0"
+# Need this for relative symlinks.
+while [ -h "$PRG" ] ; do
+    ls=`ls -ld "$PRG"`
+    link=`expr "$ls" : '.*-> \(.*\)$'`
+    if expr "$link" : '/.*' > /dev/null; then
+        PRG="$link"
+    else
+        PRG=`dirname "$PRG"`"/$link"
+    fi
+done
+SAVED="`pwd`"
+cd "`dirname \"$PRG\"`/" >/dev/null
+APP_HOME="`pwd -P`"
+cd "$SAVED" >/dev/null
+
+APP_NAME="Gradle"
+APP_BASE_NAME=`basename "$0"`
+
+# Add default JVM options here. You can also use JAVA_OPTS and GRADLE_OPTS to pass JVM options to this script.
+DEFAULT_JVM_OPTS='"-Xmx64m" "-Xms64m"'
+
+# Use the maximum available, or set MAX_FD != -1 to use that value.
+MAX_FD="maximum"
+
+warn () {
+    echo "$*"
+}
+
+die () {
+    echo
+    echo "$*"
+    echo
+    exit 1
+}
+
+# OS specific support (must be 'true' or 'false').
+cygwin=false
+msys=false
+darwin=false
+nonstop=false
+case "`uname`" in
+  CYGWIN* )
+    cygwin=true
+    ;;
+  Darwin* )
+    darwin=true
+    ;;
+  MINGW* )
+    msys=true
+    ;;
+  NONSTOP* )
+    nonstop=true
+    ;;
+esac
+
+CLASSPATH=$APP_HOME/gradle/wrapper/gradle-wrapper.jar
+
+# Determine the Java command to use to start the JVM.
+if [ -n "$JAVA_HOME" ] ; then
+    if [ -x "$JAVA_HOME/jre/sh/java" ] ; then
+        # IBM's JDK on AIX uses strange locations for the executables
+        JAVACMD="$JAVA_HOME/jre/sh/java"
+    else
+        JAVACMD="$JAVA_HOME/bin/java"
+    fi
+    if [ ! -x "$JAVACMD" ] ; then
+        die "ERROR: JAVA_HOME is set to an invalid directory: $JAVA_HOME
+
+Please set the JAVA_HOME variable in your environment to match the
+location of your Java installation."
+    fi
+else
+    JAVACMD="java"
+    which java >/dev/null 2>&1 || die "ERROR: JAVA_HOME is not set and no 'java' command could be found in your PATH.
+
+Please set the JAVA_HOME variable in your environment to match the
+location of your Java installation."
+fi
+
+# Increase the maximum file descriptors if we can.
+if [ "$cygwin" = "false" -a "$darwin" = "false" -a "$nonstop" = "false" ] ; then
+    MAX_FD_LIMIT=`ulimit -H -n`
+    if [ $? -eq 0 ] ; then
+        if [ "$MAX_FD" = "maximum" -o "$MAX_FD" = "max" ] ; then
+            MAX_FD="$MAX_FD_LIMIT"
+        fi
+        ulimit -n $MAX_FD
+        if [ $? -ne 0 ] ; then
+            warn "Could not set maximum file descriptor limit: $MAX_FD"
+        fi
+    else
+        warn "Could not query maximum file descriptor limit: $MAX_FD_LIMIT"
+    fi
+fi
+
+# For Darwin, add options to specify how the application appears in the dock
+if $darwin; then
+    GRADLE_OPTS="$GRADLE_OPTS \"-Xdock:name=$APP_NAME\" \"-Xdock:icon=$APP_HOME/media/gradle.icns\""
+fi
+
+# For Cygwin or MSYS, switch paths to Windows format before running java
+if [ "$cygwin" = "true" -o "$msys" = "true" ] ; then
+    APP_HOME=`cygpath --path --mixed "$APP_HOME"`
+    CLASSPATH=`cygpath --path --mixed "$CLASSPATH"`
+    JAVACMD=`cygpath --unix "$JAVACMD"`
+
+    # We build the pattern for arguments to be converted via cygpath
+    ROOTDIRSRAW=`find -L / -maxdepth 1 -mindepth 1 -type d 2>/dev/null`
+    SEP=""
+    for dir in $ROOTDIRSRAW ; do
+        ROOTDIRS="$ROOTDIRS$SEP$dir"
+        SEP="|"
+    done
+    OURCYGPATTERN="(^($ROOTDIRS))"
+    # Add a user-defined pattern to the cygpath arguments
+    if [ "$GRADLE_CYGPATTERN" != "" ] ; then
+        OURCYGPATTERN="$OURCYGPATTERN|($GRADLE_CYGPATTERN)"
+    fi
+    # Now convert the arguments - kludge to limit ourselves to /bin/sh
+    i=0
+    for arg in "$@" ; do
+        CHECK=`echo "$arg"|egrep -c "$OURCYGPATTERN" -`
+        CHECK2=`echo "$arg"|egrep -c "^-"`                                 ### Determine if an option
+
+        if [ $CHECK -ne 0 ] && [ $CHECK2 -eq 0 ] ; then                    ### Added a condition
+            eval `echo args$i`=`cygpath --path --ignore --mixed "$arg"`
+        else
+            eval `echo args$i`="\"$arg\""
+        fi
+        i=`expr $i + 1`
+    done
+    case $i in
+        0) set -- ;;
+        1) set -- "$args0" ;;
+        2) set -- "$args0" "$args1" ;;
+        3) set -- "$args0" "$args1" "$args2" ;;
+        4) set -- "$args0" "$args1" "$args2" "$args3" ;;
+        5) set -- "$args0" "$args1" "$args2" "$args3" "$args4" ;;
+        6) set -- "$args0" "$args1" "$args2" "$args3" "$args4" "$args5" ;;
+        7) set -- "$args0" "$args1" "$args2" "$args3" "$args4" "$args5" "$args6" ;;
+        8) set -- "$args0" "$args1" "$args2" "$args3" "$args4" "$args5" "$args6" "$args7" ;;
+        9) set -- "$args0" "$args1" "$args2" "$args3" "$args4" "$args5" "$args6" "$args7" "$args8" ;;
+    esac
+fi
+
+# Escape application args
+save () {
+    for i do printf %s\\n "$i" | sed "s/'/'\\\\''/g;1s/^/'/;\$s/\$/' \\\\/" ; done
+    echo " "
+}
+APP_ARGS=`save "$@"`
+
+# Collect all arguments for the java command, following the shell quoting and substitution rules
+eval set -- $DEFAULT_JVM_OPTS $JAVA_OPTS $GRADLE_OPTS "\"-Dorg.gradle.appname=$APP_BASE_NAME\"" -classpath "\"$CLASSPATH\"" org.gradle.wrapper.GradleWrapperMain "$APP_ARGS"
+
+exec "$JAVACMD" "$@"
+
+
+
+================================================
+FILE: android/gradlew.bat
+================================================
+@rem
+@rem Copyright 2015 the original author or authors.
+@rem
+@rem Licensed under the Apache License, Version 2.0 (the "License");
+@rem you may not use this file except in compliance with the License.
+@rem You may obtain a copy of the License at
+@rem
+@rem      https://www.apache.org/licenses/LICENSE-2.0
+@rem
+@rem Unless required by applicable law or agreed to in writing, software
+@rem distributed under the License is distributed on an "AS IS" BASIS,
+@rem WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+@rem See the License for the specific language governing permissions and
+@rem limitations under the License.
+@rem
+
+@if "%DEBUG%" == "" @echo off
+@rem ##########################################################################
+@rem
+@rem  Gradle startup script for Windows
+@rem
+@rem ##########################################################################
+
+@rem Set local scope for the variables with windows NT shell
+if "%OS%"=="Windows_NT" setlocal
+
+set DIRNAME=%~dp0
+if "%DIRNAME%" == "" set DIRNAME=.
+set APP_BASE_NAME=%~n0
+set APP_HOME=%DIRNAME%
+
+@rem Resolve any "." and ".." in APP_HOME to make it shorter.
+for %%i in ("%APP_HOME%") do set APP_HOME=%%~fi
+
+@rem Add default JVM options here. You can also use JAVA_OPTS and GRADLE_OPTS to pass JVM options to this script.
+set DEFAULT_JVM_OPTS="-Xmx64m" "-Xms64m"
+
+@rem Find java.exe
+if defined JAVA_HOME goto findJavaFromJavaHome
+
+set JAVA_EXE=java.exe
+%JAVA_EXE% -version >NUL 2>&1
+if "%ERRORLEVEL%" == "0" goto init
+
+echo.
+echo ERROR: JAVA_HOME is not set and no 'java' command could be found in your PATH.
+echo.
+echo Please set the JAVA_HOME variable in your environment to match the
+echo location of your Java installation.
+
+goto fail
+
+:findJavaFromJavaHome
+set JAVA_HOME=%JAVA_HOME:"=%
+set JAVA_EXE=%JAVA_HOME%/bin/java.exe
+
+if exist "%JAVA_EXE%" goto init
+
+echo.
+echo ERROR: JAVA_HOME is set to an invalid directory: %JAVA_HOME%
+echo.
+echo Please set the JAVA_HOME variable in your environment to match the
+echo location of your Java installation.
+
+goto fail
+
+:init
+@rem Get command-line arguments, handling Windows variants
+
+if not "%OS%" == "Windows_NT" goto win9xME_args
+
+:win9xME_args
+@rem Slurp the command line arguments.
+set CMD_LINE_ARGS=
+set _SKIP=2
+
+:win9xME_args_slurp
+if "x%~1" == "x" goto execute
+
+set CMD_LINE_ARGS=%*
+
+:execute
+@rem Setup the command line
+
+set CLASSPATH=%APP_HOME%\gradle\wrapper\gradle-wrapper.jar
+
+@rem Execute Gradle
+"%JAVA_EXE%" %DEFAULT_JVM_OPTS% %JAVA_OPTS% %GRADLE_OPTS% "-Dorg.gradle.appname=%APP_BASE_NAME%" -classpath "%CLASSPATH%" org.gradle.wrapper.GradleWrapperMain %CMD_LINE_ARGS%
+
+:end
+@rem End local scope for the variables with windows NT shell
+if "%ERRORLEVEL%"=="0" goto mainEnd
+
+:fail
+rem Set variable GRADLE_EXIT_CONSOLE if you need the _script_ return code instead of
+rem the _cmd.exe /c_ return code!
+if  not "" == "%GRADLE_EXIT_CONSOLE%" exit 1
+exit /b 1
+
+:mainEnd
+if "%OS%"=="Windows_NT" endlocal
+
+:omega
+
+
+
+================================================
+FILE: android/gradle/wrapper/gradle-wrapper.properties
+================================================
+distributionBase=GRADLE_USER_HOME
+distributionPath=wrapper/dists
+distributionUrl=https\://services.gradle.org/distributions/gradle-6.3-all.zip
+zipStoreBase=GRADLE_USER_HOME
+zipStorePath=wrapper/dists
+
+
+
+================================================
+FILE: android/src/main/AndroidManifest.xml
+================================================
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+          package="com.spicysparks.googleonetapsignin">
+</manifest>
+
+
+
+================================================
+FILE: android/src/main/java/com/spicysparks/googleonetapsignin/RNGoogleOneTapSignInModule.java
+================================================
+package com.spicysparks.googleonetapsignin;
+
+import androidx.annotation.NonNull;
+
+import androidx.credentials.ClearCredentialStateRequest;
+import androidx.credentials.CreateCredentialResponse;
+import androidx.credentials.CreatePasswordRequest;
+import androidx.credentials.Credential;
+import androidx.credentials.CredentialManager;
+import androidx.credentials.CredentialManagerCallback;
+import androidx.credentials.GetCredentialRequest;
+import androidx.credentials.GetCredentialResponse;
+import androidx.credentials.PasswordCredential;
+import androidx.credentials.CustomCredential;
+import androidx.credentials.exceptions.ClearCredentialException;
+import androidx.credentials.exceptions.CreateCredentialException;
+import androidx.credentials.exceptions.GetCredentialException;
+
+import com.google.android.libraries.identity.googleid.GetGoogleIdOption;
+import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential;
+
+import com.facebook.react.bridge.Arguments;
+import com.facebook.react.bridge.ReadableMap;
+import com.facebook.react.bridge.Promise;
+import com.facebook.react.bridge.ReactApplicationContext;
+import com.facebook.react.bridge.ReactContextBaseJavaModule;
+import com.facebook.react.bridge.ReactMethod;
+import com.facebook.react.bridge.WritableMap;
+
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
+
+public class RNGoogleOneTapSignInModule extends ReactContextBaseJavaModule {
+
+  private String webClientId;
+
+  CredentialManager credentialManager;
+  GetCredentialRequest getCredRequest;
+  GetGoogleIdOption googleIdOption;
+
+  @Override
+  public String getName() {
+      return "RNGoogleOneTapSignIn";
+  }
+
+  public RNGoogleOneTapSignInModule(final ReactApplicationContext reactContext) {
+    super(reactContext);
+
+    credentialManager = CredentialManager.create(reactContext);
+  }
+  
+
+  @ReactMethod
+  public void configure(
+    final ReadableMap config,
+    final Promise promise
+  ) {
+    this.webClientId = config.hasKey("webClientId") ? config.getString("webClientId") : null;
+    
+    if (this.webClientId == null) {
+      promise.reject("ERROR", "webClientId is required");
+      return;
+    }
+    
+    googleIdOption = new GetGoogleIdOption.Builder()
+      .setFilterByAuthorizedAccounts(true)
+      .setServerClientId(this.webClientId)
+      .build();
+    
+    getCredRequest = new GetCredentialRequest.Builder()
+      .addCredentialOption(googleIdOption)
+      .build();
+
+    promise.resolve(null);
+  }
+
+  @ReactMethod
+  public void signIn(Promise promise) {
+    var activity = getCurrentActivity();
+    if (activity == null) {
+      promise.reject("ERROR", "Activity is null");
+      return;
+    }
+    Executor executor = Executors.newSingleThreadExecutor();
+    credentialManager.getCredentialAsync(
+      activity,
+      getCredRequest,
+      null,
+      executor,
+      new CredentialManagerCallback<>() {
+        @Override
+        public void onResult(GetCredentialResponse result) {
+          Credential credential = result.getCredential();
+
+          if (credential instanceof PasswordCredential) {
+            // This will be the case when the user has saved a password credential
+            // But we are not using it for now
+            String username = ((PasswordCredential) credential).getId();
+            String password = ((PasswordCredential) credential).getPassword();
+            WritableMap args = Arguments.createMap();
+            args.putString("id", username);
+            args.putString("type", "password");
+            args.putString("password", password);
+            promise.resolve(args);
+          } else if (credential instanceof CustomCredential) {
+
+            if (GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL.equals(credential.getType())) {
+              GoogleIdTokenCredential googleIdTokenCredential = GoogleIdTokenCredential.createFrom(
+                  (credential).getData());
+
+              String id = googleIdTokenCredential.getId();
+              String idToken = googleIdTokenCredential.getIdToken();
+              String givenName = googleIdTokenCredential.getGivenName();
+              String familyName = googleIdTokenCredential.getFamilyName();
+              WritableMap args = Arguments.createMap();
+              args.putString("id", id);
+              args.putString("idToken", idToken);
+              args.putString("givenName", givenName);
+              args.putString("familyName", familyName);
+              args.putString("type", "google");
+              promise.resolve(args);
+            } else {
+              promise.reject("ERROR", "Unexpected type of credential");
+            }
+          } else {
+            promise.reject("ERROR", "Unexpected type of credential - 2");
+          }
+        }
+        @Override
+        public void onError(@NonNull GetCredentialException e) {
+          promise.reject("ERROR", e.getMessage());
+        }
+      }
+    );
+  }
+
+  @ReactMethod
+  public void signOut(Promise promise) {
+    Executor executor = Executors.newSingleThreadExecutor();
+    ClearCredentialStateRequest clearCredentialRequest = new ClearCredentialStateRequest();
+    credentialManager.clearCredentialStateAsync(
+      clearCredentialRequest,
+      null,
+      executor,
+      new CredentialManagerCallback<>() {
+        @Override
+        public void onResult(Void unused) {
+          promise.resolve(true);
+        }
+        @Override
+        public void onError(@NonNull ClearCredentialException e) {
+          promise.reject("ERROR", e.getMessage());
+        }
+      }
+    );
+  }
+}
+
+
+
+================================================
+FILE: android/src/main/java/com/spicysparks/googleonetapsignin/RNGoogleOneTapSignInPackage.java
+================================================
+package com.spicysparks.googleonetapsignin;
+
+import com.facebook.react.ReactPackage;
+import com.facebook.react.bridge.JavaScriptModule;
+import com.facebook.react.bridge.NativeModule;
+import com.facebook.react.bridge.ReactApplicationContext;
+import com.facebook.react.uimanager.ViewManager;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+public class RNGoogleOneTapSignInPackage implements ReactPackage {
+
+    @Override
+    public List<NativeModule> createNativeModules(ReactApplicationContext reactContext) {
+        List<NativeModule> modules = new ArrayList<>();
+        modules.add(new RNGoogleOneTapSignInModule(reactContext));
+        return modules;
+    }
+
+  @Override
+    public List<ViewManager> createViewManagers(ReactApplicationContext reactContext) {
+        return Collections.emptyList();
+    }
+}
+
+
+
+================================================
+FILE: src/GoogleOneTapSignIn.js
+================================================
+import { NativeModules, Platform } from 'react-native';
+
+const { RNGoogleOneTapSignIn } = NativeModules;
+
+const IS_IOS = Platform.OS === 'ios';
+
+class GoogleOneTapSignIn {
+  configPromise;
+
+  constructor() {
+    if (__DEV__ && !IS_IOS && !RNGoogleOneTapSignIn) {
+      console.error(
+        `RN GoogleOneTapSignIn native module is not correctly linked. Please read the readme, setup and troubleshooting instructions carefully or try manual linking. If you're using Expo, please use expo-google-sign-in. This is because Expo does not support custom native modules.`
+      );
+    }
+  }
+
+  signIn() {
+    if (IS_IOS)
+      return Promise.reject(new Error("Unsupported"));
+    return RNGoogleOneTapSignIn.signIn();
+  }
+
+  configure(options = {}) {
+    if (IS_IOS) {
+      return Promise.reject(new Error("Unsupported"));
+    }
+    
+    if (!options.webClientId) {
+      throw new Error('RNGoogleOneTapSignIn: you need to pass web ClientID');
+    }
+
+    return RNGoogleOneTapSignIn.configure(options);
+  }
+
+  signOut() {
+    if (IS_IOS)
+      return Promise.reject(new Error("Unsupported"));
+    return RNGoogleOneTapSignIn.signOut();
+  }
+}
+
+export const GoogleOneTapSignInSingleton = new GoogleOneTapSignIn();
+
+
+================================================
+FILE: .circleci/config.yml
+================================================
+version: 2.1
+
+executors:
+  default:
+    docker:
+      - image: circleci/node:10
+    working_directory: ~/project
+
+commands:
+  attach_project:
+    steps:
+      - attach_workspace:
+          at: ~/project
+
+jobs:
+  install-dependencies:
+    executor: default
+    steps:
+      - checkout
+      - attach_project
+      - restore_cache:
+          keys:
+            - dependencies-{{ checksum "package.json" }}
+            - dependencies-
+      - restore_cache:
+          keys:
+            - dependencies-example-{{ checksum "example/package.json" }}
+            - dependencies-example-
+      - run:
+          name: Install dependencies
+          command: |
+            yarn install --cwd example --frozen-lockfile
+            yarn install --frozen-lockfile
+      - save_cache:
+          key: dependencies-{{ checksum "package.json" }}
+          paths: node_modules
+      - save_cache:
+          key: dependencies-example-{{ checksum "example/package.json" }}
+          paths: example/node_modules
+      - persist_to_workspace:
+          root: .
+          paths: .
+
+  lint:
+    executor: default
+    steps:
+      - attach_project
+      - run:
+          name: Lint files
+          command: |
+            yarn lint
+
+  typescript:
+    executor: default
+    steps:
+      - attach_project
+      - run:
+          name: Typecheck files
+          command: |
+            yarn typescript
+
+  unit-tests:
+    executor: default
+    steps:
+      - attach_project
+      - run:
+          name: Run unit tests
+          command: |
+            yarn test --coverage
+      - store_artifacts:
+          path: coverage
+          destination: coverage
+
+  build-package:
+    executor: default
+    steps:
+      - attach_project
+      - run:
+          name: Build package
+          command: |
+            yarn prepare
+
+workflows:
+  build-and-test:
+    jobs:
+      - install-dependencies
+      - lint:
+          requires:
+            - install-dependencies
+      - typescript:
+          requires:
+            - install-dependencies
+      - unit-tests:
+          requires:
+            - install-dependencies
+      - build-package:
+          requires:
+            - install-dependencies
+
+
